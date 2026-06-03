@@ -942,19 +942,22 @@ async function sha256(str){
    
 ══════════════════════════════════════════════════ */
 const SB_URL  = 'https://ogvhhqyjkukqzgeejfoz.supabase.co';
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ndmhocXlqa3VrcXpnZWVqZm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg0OTU3MDYsImV4cCI6MjA2NDA3MTcwNn0';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ndmhocXlqa3VrcXpnZWVqZm96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MjU3ODMsImV4cCI6MjA5NjAwMTc4M30.oev2dgyxVJWaHQ5oLAV_EgMAqBvdZFX1DXWSbDzdI-U';
 
 // Supabase REST API 헬퍼
 async function sbFetch(path, options={}){
+  const extraHeaders = options.headers || {};
+  const prefer = extraHeaders['Prefer'] || options.prefer || 'return=representation';
   const res = await fetch(SB_URL + '/rest/v1/' + path, {
     headers: {
       'apikey': SB_KEY,
       'Authorization': 'Bearer ' + SB_KEY,
       'Content-Type': 'application/json',
-      'Prefer': options.prefer || 'return=representation',
-      ...( options.headers || {} )
+      'Prefer': prefer,
+      ...extraHeaders
     },
-    ...options
+    method: options.method || 'GET',
+    body: options.body
   });
   if(!res.ok){
     const err = await res.text();
@@ -1019,10 +1022,12 @@ const DB = {
   },
   async saveUser(user){
     const row = userToDbRow(user);
-    await sbFetch('users?id=eq.' + user.id, {
-      method:'DELETE', prefer:'return=minimal'
+    // upsert: 있으면 update, 없으면 insert
+    await sbFetch('users', {
+      method:'POST',
+      headers:{ 'Prefer':'resolution=merge-duplicates,return=minimal' },
+      body:JSON.stringify(row)
     });
-    await sbFetch('users', { method:'POST', body:JSON.stringify(row) });
     _cache.users = null;
   },
   async deleteUser(id){
@@ -1300,7 +1305,11 @@ async function doLogin(){
   currentUser=user;
   setSession(user,remember);
   hideLoginError();
-  if(user.mustChangePw){openChangePwModal(true)}else{enterApp()}
+  // 캐시 초기화 (다른 계정 데이터 혼입 방지)
+  _cache.users=null;
+  _cache.records=null;
+  _cache.offline=null;
+  if(user.mustChangePw){openChangePwModal(true)}else{await enterApp()}
 }
 function showLoginError(msg){const el=document.getElementById('loginError');el.textContent=msg;el.classList.add('show')}
 function hideLoginError(){document.getElementById('loginError').classList.remove('show')}
@@ -1345,8 +1354,9 @@ async function doChangePw(){
 async function enterApp(){
   document.getElementById('loginPage').style.display='none';
   document.getElementById('appShell').style.display='block';
-  // 레코드 캐시 확보
+  // 최신 데이터 로드
   if(!_cache.records){ await DB.getRecords(); }
+  if(!_cache.users){ await DB.getUsers(); }
   document.getElementById('sbUserName').textContent=currentUser.name;
   document.getElementById('sbUserRole').textContent=roleLabel(currentUser.role);
   document.getElementById('sbAvatar').textContent=currentUser.name.charAt(0);
@@ -1373,7 +1383,14 @@ function canAccessRole(required){
   return(order[currentUser?.role]??-1)>=(order[required]??999);
 }
 function roleLabel(r){return{super_admin:'최고관리자',admin:'관리자',member:'팀원'}[r]||r}
-function doLogout(){clearSession();document.getElementById('appShell').style.display='none';document.getElementById('loginPage').style.display='flex';document.getElementById('li_id').value='';document.getElementById('li_pw').value=''}
+function doLogout(){
+  clearSession();
+  _cache.users=null;_cache.records=null;_cache.offline=null;
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('loginPage').style.display='flex';
+  document.getElementById('li_id').value='';
+  document.getElementById('li_pw').value='';
+}
 
 /* ══════════════════════════════════════════════════
    § I. SECTION NAVIGATION
@@ -2447,7 +2464,7 @@ async function submitAccount(){
   if(users.some(u=>u.loginId===loginId)){showModalError('accError','이미 사용 중인 아이디입니다.');return}
   const pwHash=await sha256(pw);
   await DB.saveUser({id:uid(),loginId,pwHash,name,role,team,active:true,mustChangePw:true,createdAt:todayStr()});
-  _cache.users=null;closeModal();renderAccounts();toast('✅ 계정이 생성되었습니다','ok');
+  _cache.users=null; await DB.getUsers(); closeModal(); await renderAccounts(); toast('✅ 계정이 생성되었습니다','ok');
 }
 async function checkIdDup(){
   const loginId=document.getElementById('ac_id').value.trim();
@@ -2562,10 +2579,17 @@ function applyLogoData(data){
   }
 }
 async function applyLogo(){
-  // localStorage 캐시 우선, 없으면 Supabase에서 로드
-  let data = store.get(K.logo);
-  if(!data){
-    try{ data = await sbGetLogo(); if(data) store.set(K.logo,data); }catch(e){}
+  // Supabase에서 최신 로고 로드 (항상 최신 유지)
+  let data = null;
+  try{
+    data = await sbGetLogo();
+    if(data){
+      store.set(K.logo, data); // 캐시 업데이트
+    } else {
+      data = store.get(K.logo); // Supabase에 없으면 로컬 캐시 사용
+    }
+  }catch(e){
+    data = store.get(K.logo); // 오류 시 로컬 캐시 폴백
   }
   applyLogoData(data);
 }
@@ -2616,26 +2640,39 @@ function toast(msg,type=''){
    § Z. BOOT
 ══════════════════════════════════════════════════ */
 (async function boot(){
-  applyLogo();
-  if(!store.get(K.logo)){
-    document.getElementById('loginLogoImg').style.display='block';
-    document.getElementById('loginLogoFallback').style.display='none';
+  // 다크모드 먼저 적용
+  if(store.get(K.dark)){
+    document.documentElement.setAttribute('data-theme','dark');
+    const b=document.getElementById('dmBtn');if(b)b.textContent='☀️';
   }
-  if(store.get(K.dark)){document.documentElement.setAttribute('data-theme','dark');const b=document.getElementById('dmBtn');if(b)b.textContent='☀️'}
-  // Supabase 초기화
+
+  // 로그인 화면 먼저 표시
+  document.getElementById('loginPage').style.display='flex';
+
+  // 로고 로드 (Supabase + localStorage 캐시)
+  try{ await applyLogo(); }catch(e){ console.warn('Logo load failed:', e); }
+
+  // Supabase 연결 확인 + 최초 슈퍼어드민 생성
   try{
     await initSuperAdmin();
   }catch(e){
     console.error('Supabase 연결 실패:', e);
-    toast('⚠️ 서버 연결에 실패했습니다. 잠시 후 새로고침 해주세요.','err');
+    toast('⚠️ 서버 연결 실패. 새로고침 해주세요.','err');
     return;
   }
-  // 세션 복원
-  const saved = await getSessionAsync();
-  if(saved){
-    currentUser=saved;
-    await DB.getRecords();
-    enterApp();
+
+  // 자동 로그인 세션 복원
+  try{
+    const saved = await getSessionAsync();
+    if(saved){
+      currentUser = saved;
+      _cache.users = null; // 캐시 초기화로 최신 데이터 보장
+      _cache.records = null;
+      await DB.getRecords();
+      await enterApp();
+    }
+  }catch(e){
+    console.error('Session restore failed:', e);
   }
 })();
 </script>
