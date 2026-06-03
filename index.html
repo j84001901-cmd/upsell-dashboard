@@ -362,7 +362,136 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
   .sec-header{flex-direction:column;align-items:flex-start}
   .notif-dropdown{width:280px;right:-60px}
 }
-@media(max-width:480px){.kpi-grid{grid-template-columns:1fr}.login-card{padding:28px 22px}.kpi-val{font-size:22px}}
+@media(max-width:480px){
+  .kpi-grid{grid-template-columns:1fr}
+  .login-card{padding:28px 22px}
+  .kpi-val{font-size:22px}
+  /* 알림 요약 카드: 4→2열 */
+  #alertSummaryGrid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important}
+}
+
+/* ── Galaxy Z Fold 6 커버화면 및 초소형 화면 (≤ 430px) ── */
+@media(max-width:430px){
+
+  /* ▸ 기본 레이아웃 */
+  html{font-size:13px}
+  .main-content{padding:10px}
+
+  /* ▸ 탑바 */
+  .topbar{padding:0 10px;gap:8px}
+  .tb-page-title{font-size:13px;font-weight:800}
+  .tb-right{gap:6px}
+  .date-pill{display:none} /* 커버화면에서 날짜 pill 숨김 — 공간 확보 */
+  .dm-toggle,.notif-btn{width:32px;height:32px;font-size:14px}
+  .notif-dropdown{width:calc(100vw - 20px);right:-10px;max-width:340px}
+
+  /* ▸ 섹션 헤더 */
+  .sec-header h2{font-size:16px;letter-spacing:-.3px}
+  .sec-header p{font-size:11px}
+  .sec-actions{gap:6px}
+  .sec-actions .btn{padding:5px 10px;font-size:11px}
+
+  /* ▸ KPI 카드 */
+  .kpi-grid{grid-template-columns:1fr!important;gap:8px}
+  .kpi-card{padding:14px 14px 12px}
+  .kpi-icon{width:32px;height:32px;font-size:14px;margin-bottom:10px}
+  .kpi-val{font-size:20px!important}
+  .kpi-label{font-size:10px}
+  .kpi-sub{font-size:10px}
+
+  /* ▸ 알림 요약 그리드: 4→2열 */
+  #alertSummaryGrid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important}
+
+  /* ▸ 카드 공통 */
+  .card-header{flex-wrap:wrap;gap:6px;padding:12px 14px}
+  .card-title{font-size:13px}
+  .card-header .btn-ghost{padding:4px 9px;font-size:11px}
+  .chip{font-size:10px;padding:2px 7px}
+
+  /* ▸ 인원별 집계 sum-tbl: tbl-wrap 안에서 스크롤 */
+  .sum-tbl{min-width:360px}
+  .sum-tbl thead th{padding:8px 8px;font-size:10px;letter-spacing:0;white-space:nowrap}
+  .sum-tbl tbody td{padding:8px 8px;font-size:11px}
+
+  /* ▸ 순위 */
+  .rank-card{padding:14px;gap:10px}
+  .rank-medal{width:38px;height:38px;font-size:15px}
+  .rk-name{font-size:13px}
+  .rk-count{font-size:11px}
+  .rk-amt{font-size:12px}
+  .deadline-note{flex-direction:column;gap:4px;font-size:11px;padding:8px 12px}
+  .offline-form-grid{grid-template-columns:1fr 1fr;gap:10px}
+
+  /* ▸ 폼 카드 */
+  .form-card-hd{padding:12px 14px}
+  .form-body{padding:14px}
+  .form-grid{gap:12px}
+  .fl{font-size:10px}
+  .fi{padding:8px 10px;font-size:12px}
+  .fi-hint{font-size:10px}
+  textarea.fi{min-height:56px}
+  .form-foot{padding:10px 14px;flex-wrap:wrap;gap:8px}
+  .form-foot .btn{flex:1;justify-content:center;min-width:0}
+
+  /* ▸ 업셀금액 계산 박스 */
+  .calc-box{flex-direction:column;align-items:flex-start;gap:6px;padding:10px 12px}
+  .cb-val{font-size:18px}
+  .cb-brk{font-size:10px}
+
+  /* ▸ 라디오 토글 */
+  .rtog{padding:6px 9px;font-size:11px}
+
+  /* ▸ 체크리스트 */
+  .chk-item{padding:6px 9px;font-size:11px}
+
+  /* ▸ 필터바 */
+  .filter-bar{padding:10px 12px;gap:8px}
+  .filter-group{min-width:calc(50% - 8px);flex:1 1 calc(50% - 8px)}
+  .filter-bar .fi{padding:7px 9px;font-size:11px}
+  .filter-actions{width:100%;margin-left:0;justify-content:flex-end}
+
+  /* ▸ 상태 칩 / 배지 */
+  .status-chip{padding:3px 7px;font-size:10px}
+  .badge{padding:2px 6px;font-size:10px}
+
+  /* ▸ 완료 체크 버튼 */
+  .btn-check{padding:4px 8px;font-size:11px}
+
+  /* ▸ 계정/데이터 관리 */
+  .tbl thead th{padding:8px 8px;font-size:10px;letter-spacing:0}
+  .tbl tbody td{padding:9px 8px;font-size:11px}
+
+  /* ▸ 사이드바 */
+  .sb-nav-item{font-size:11px;padding:7px 9px}
+  .sb-user-name{font-size:11px}
+  .sb-user-role{font-size:9px}
+
+  /* ▸ 토스트 알림 */
+  #toasts{bottom:14px;right:10px;left:10px}
+  .toast{max-width:100%;font-size:12px;padding:9px 13px}
+
+  /* ▸ 로그인 카드 */
+  .login-card{padding:24px 18px}
+  .login-title{font-size:17px}
+  .login-sub{font-size:12px}
+  .lf-input{padding:10px 12px;font-size:12px}
+  .btn-login{padding:11px;font-size:13px}
+
+  /* ▸ 대납 상세 패널 */
+  .sdp-row{grid-template-columns:50px 1fr 50px 80px 100px 80px 70px;font-size:11px;padding:7px 10px}
+  .sdp-header{padding:8px 12px}
+}
+
+/* ── 폴드 6 커버화면 극소폭 (≤ 390px) 추가 보정 ── */
+@media(max-width:390px){
+  .kpi-grid{gap:6px}
+  .rank-grid{gap:10px}
+  .section{gap:16px}
+  .card-header{padding:10px 12px}
+  .form-body{padding:12px}
+  .filter-group{min-width:100%;flex:1 1 100%}
+  .filter-actions{width:100%}
+}
 
 /* ── 인센티브 / 순위 추가 스타일 ── */
 .grade-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800;letter-spacing:.2px;white-space:nowrap}
@@ -586,7 +715,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       </div>
       <div class="card">
         <div class="card-header"><div class="card-header-left"><span>📊</span><span class="card-title">인원별 집계</span></div></div>
-        <table class="sum-tbl"><thead><tr><th>순위</th><th>담당자</th><th>총 건수</th><th>총 업셀금액</th><th>평균 업셀금액</th></tr></thead><tbody id="dashSumTbody"></tbody></table>
+        <div class="tbl-wrap"><table class="sum-tbl"><thead><tr><th>순위</th><th>담당자</th><th>총 건수</th><th>총 업셀금액</th><th>평균 업셀금액</th></tr></thead><tbody id="dashSumTbody"></tbody></table></div>
       </div>
     </section>
 
