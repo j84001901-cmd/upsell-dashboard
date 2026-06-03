@@ -1847,7 +1847,6 @@ function getGrade(totalCount){
 }
 
 async function renderRanking(){
-  // 전일 기준일 표시
   const yesterday=addDays(todayStr(),-1);
   const deadlineEl=document.getElementById('deadlineBaseDate');
   if(deadlineEl) deadlineEl.textContent=yesterday;
@@ -1855,15 +1854,12 @@ async function renderRanking(){
   const recs=getVisibleRecords();
   const offline=await DB.getOffline();
 
-  /* ── 1. 맞춤제안 집계 맵 ── */
+  /* ── 1. 맞춤제안 집계 (인센티브 대상) ── */
   const customMap={};
   recs.forEach(r=>{
     if(!r.agent) return;
     if(!customMap[r.agent]) customMap[r.agent]={
-      name:r.agent,
-      customCnt:0,   // 맞춤제안 건수
-      total:0,       // 맞춤제안 총 업셀금액
-      upsellIncen:0  // 업셀 인센티브 (대납없음만)
+      name:r.agent, customCnt:0, total:0, upsellIncen:0
     };
     customMap[r.agent].customCnt++;
     customMap[r.agent].total += (r.upsellAmt||0);
@@ -1873,7 +1869,7 @@ async function renderRanking(){
     }
   });
 
-  /* ── 2. 오프라인 집계 맵 ── */
+  /* ── 2. 오프라인 집계 (건수 합산만, 인센티브 계산 제외) ── */
   const offlineMap={};
   offline.forEach(o=>{
     if(!o.agent) return;
@@ -1881,38 +1877,50 @@ async function renderRanking(){
     offlineMap[o.agent] += parseInt(o.count)||0;
   });
 
-  /* ── 3. 전체 담당자 합산 (맞춤제안만 있는 자 + 오프라인만 있는 자 모두 포함) ── */
-  const allAgents=new Set([...Object.keys(customMap), ...Object.keys(offlineMap)]);
-  let aggWithIncen=Array.from(allAgents).map(name=>{
-    const c=customMap[name]||{name,customCnt:0,total:0,upsellIncen:0};
-    const offlineCnt=offlineMap[name]||0;
-    const totalCnt=c.customCnt+offlineCnt;   // 합산 건수 (그레이드 기준)
+  /* ── 3. 팀 전체 합산 건수 계산 (그레이드 단가 기준) ──
+     규칙: 그레이드 단가는 팀 전체 합산 건수로 결정
+           (개인별 건수가 아니라 팀 총합 기준)
+  ── */
+  // 팀 전체 맞춤제안 건수
+  const teamCustomTotal = Object.values(customMap).reduce((s,c)=>s+c.customCnt, 0);
+  // 팀 전체 오프라인 건수
+  const teamOfflineTotal = Object.values(offlineMap).reduce((s,cnt)=>s+cnt, 0);
+  // 팀 전체 합산 건수 → 이 기준으로 그레이드 단가 결정
+  const teamTotalCnt = teamCustomTotal + teamOfflineTotal;
+  const teamGrade = getGrade(teamTotalCnt);
 
-    // 그레이드: 합산 건수 기준 단가 × 합산 건수
-    const grade=getGrade(totalCnt);
-    const gradeAmt=grade.unit>0 ? totalCnt*grade.unit : 0;
+  /* ── 4. 개인별 집계 (인센티브 대상: 맞춤제안 담당자만) ── */
+  // 맞춤제안 실적 있는 담당자만 인센티브 집계 표시
+  // 오프라인 건수는 합산에만 포함, 인센티브 행에는 표시 안 함
+  let aggWithIncen = Object.values(customMap).map(c => {
+    const offlineCnt = offlineMap[c.name]||0;
+    const totalCnt = c.customCnt + offlineCnt; // 개인 합산 건수
 
-    // 예상 인센티브 합계
-    const totalIncen=c.upsellIncen+gradeAmt;
+    // 그레이드 금액: 팀 전체 기준 단가 × 개인 합산 건수
+    const gradeAmt = teamGrade.unit>0 ? totalCnt * teamGrade.unit : 0;
+
+    // 예상 인센티브 = 그레이드 금액 + 업셀 인센티브
+    const totalIncen = c.upsellIncen + gradeAmt;
 
     return{
-      name,
-      count:c.customCnt,       // 맞춤제안 건수 (순위 카드 표시용)
-      offlineCnt,               // 오프라인 건수
-      totalCnt,                 // 합산 건수 (그레이드·순위 기준)
-      total:c.total,            // 맞춤제안 총 업셀금액
-      upsellIncen:c.upsellIncen,// 업셀 인센티브
-      grade, gradeAmt, totalIncen
+      name: c.name,
+      count: c.customCnt,       // 맞춤제안 건수
+      offlineCnt,               // 오프라인 건수 (합산용)
+      totalCnt,                 // 개인 합산 건수
+      total: c.total,           // 총 업셀금액
+      upsellIncen: c.upsellIncen,
+      grade: teamGrade,         // 팀 전체 기준 그레이드 (모두 동일)
+      gradeAmt, totalIncen
     };
   });
 
-  /* ── 4. 순위 정렬: 합산 건수 기준, 동률이면 업셀금액 높은 순 ── */
+  /* ── 5. 순위 정렬: 합산 건수 기준, 동률이면 업셀금액 높은 순 ── */
   aggWithIncen.sort((a,b)=>
     b.totalCnt!==a.totalCnt ? b.totalCnt-a.totalCnt : b.total-a.total
   );
 
   renderRankCards('fullRankGrid', aggWithIncen);
-  renderIncentiveTable('rankSumTbody', aggWithIncen);
+  renderIncentiveTable('rankSumTbody', aggWithIncen, teamTotalCnt, teamGrade);
   renderOfflineList();
 }
 function renderRankCards(id,agg){
@@ -1944,51 +1952,54 @@ function renderSumTable(tbodyId,agg){
   tb.innerHTML=agg.map((p,i)=>`<tr><td class="fw">${i+1}위</td><td class="fw">${esc(p.name)}</td><td class="num">${p.count}건</td><td class="num">${fmt(p.total)}</td><td class="num">${fmt(p.total/p.count)}</td></tr>`).join('');
 }
 
-function renderIncentiveTable(tbodyId,agg){
+function renderIncentiveTable(tbodyId, agg, teamTotalCnt=0, teamGrade=null){
   const tb=document.getElementById(tbodyId);
   if(!agg.length){tb.innerHTML=`<tr><td colspan="10" class="tbl-empty">📭 데이터가 없습니다</td></tr>`;return}
 
-  // 합계 행 계산
-  const sumCustom   = agg.reduce((s,p)=>s+p.count,0);
-  const sumOffline  = agg.reduce((s,p)=>s+p.offlineCnt,0);
-  const sumTotal    = agg.reduce((s,p)=>s+p.totalCnt,0);
-  const sumGrade    = agg.reduce((s,p)=>s+p.gradeAmt,0);
-  const sumUpsell   = agg.reduce((s,p)=>s+p.upsellIncen,0);
-  const sumIncen    = agg.reduce((s,p)=>s+p.totalIncen,0);
+  const g = teamGrade || getGrade(0);
+
+  // 합계 행
+  const sumCustom  = agg.reduce((s,p)=>s+p.count,0);
+  const sumOffline = agg.reduce((s,p)=>s+p.offlineCnt,0);
+  const sumTotal   = agg.reduce((s,p)=>s+p.totalCnt,0);
+  const sumGrade   = agg.reduce((s,p)=>s+p.gradeAmt,0);
+  const sumUpsell  = agg.reduce((s,p)=>s+p.upsellIncen,0);
+  const sumIncen   = agg.reduce((s,p)=>s+p.totalIncen,0);
+
+  // 팀 전체 기준 그레이드 배지 (모든 행에 동일 표시)
+  const gradeBadge = g.unit>0
+    ? `<span class="grade-badge ${g.cls}">${g.label}</span>`
+    : `<span class="grade-badge grade-none">${g.label}</span>`;
+
+  // 팀 전체 기준 안내
+  const teamNote = `<div style="font-size:10px;color:var(--ink-4);margin-top:1px">팀 전체 ${teamTotalCnt}건 기준</div>`;
 
   tb.innerHTML = agg.map((p,i)=>{
-    const g=p.grade;
-    const gradeBadge=g.unit>0
-      ?`<span class="grade-badge ${g.cls}">${g.label}</span>`
-      :`<span class="grade-badge grade-none">${g.label}</span>`;
-
-    // 업셀 인센티브 툴팁: 대납없음 건수만 적용됨 안내
     const upsellNote = p.upsellIncen>0
-      ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px">대납없음 건수 기준</div>`
-      : `<div style="font-size:10px;color:var(--ink-4);margin-top:2px">대납있음 → 그레이드만</div>`;
+      ? `<div style="font-size:10px;color:var(--ink-4);margin-top:2px">대납없음 업셀×2</div>`
+      : `<div style="font-size:10px;color:var(--ink-4);margin-top:2px">대납있음→그레이드만</div>`;
 
     return`<tr>
       <td class="fw ctr">${i+1}위</td>
       <td class="fw">${esc(p.name)}</td>
       <td class="num">${p.count}건</td>
-      <td class="num">${p.offlineCnt}건</td>
+      <td class="num" style="color:var(--ink-3)">${p.offlineCnt>0?p.offlineCnt+'건':'—'}</td>
       <td class="num" style="font-weight:800;color:var(--ink);background:var(--brand-dim)">${p.totalCnt}건</td>
-      <td class="ctr">${gradeBadge}</td>
+      <td class="ctr">${gradeBadge}${teamNote}</td>
       <td class="num">${g.unit>0?(g.unit/1000).toFixed(0)+'천원/건':'—'}</td>
       <td class="num" style="color:var(--amber-text);font-weight:700">${g.unit>0?fmt(p.gradeAmt):'—'}</td>
       <td class="num" style="color:var(--green)">
-        ${fmt(p.upsellIncen)}
-        ${upsellNote}
+        ${fmt(p.upsellIncen)}${upsellNote}
       </td>
       <td class="num" style="font-weight:800;color:var(--brand);font-size:14px;background:rgba(14,165,233,.06)">${fmt(p.totalIncen)}</td>
     </tr>`;
   }).join('') + `
   <tr style="background:var(--surface-2);border-top:2px solid var(--border)">
-    <td colspan="2" class="fw" style="text-align:center;font-size:12px;color:var(--ink-3)">합 계</td>
+    <td colspan="2" class="fw ctr" style="font-size:12px;color:var(--ink-3)">팀 합계</td>
     <td class="num" style="font-weight:700">${sumCustom}건</td>
-    <td class="num" style="font-weight:700">${sumOffline}건</td>
-    <td class="num" style="font-weight:800;background:var(--brand-dim)">${sumTotal}건</td>
-    <td></td>
+    <td class="num" style="color:var(--ink-3);font-weight:700">${sumOffline}건</td>
+    <td class="num" style="font-weight:800;background:var(--brand-dim)">${teamTotalCnt}건</td>
+    <td class="ctr"><span style="font-size:11px;color:var(--brand-text);font-weight:700">팀 전체 기준</span></td>
     <td></td>
     <td class="num" style="color:var(--amber-text);font-weight:700">${fmt(sumGrade)}</td>
     <td class="num" style="color:var(--green);font-weight:700">${fmt(sumUpsell)}</td>
