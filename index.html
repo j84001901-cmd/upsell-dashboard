@@ -2251,18 +2251,27 @@ function renderPlanCheck(){
     if(fS){const st=getPlanStatus(r);if(st.label!==fS)return false}
     return true;
   });
-  // 지연>당일>임박>예정>완료 정렬
-  const order={delayed:0,today:1,imminent:2,planned:3,done:4};
-  recs.sort((a,b)=>(order[getPlanStatus(a).key]||5)-(order[getPlanStatus(b).key]||5));
+  // 미완료: 변경일 오름차순(임박한 것 먼저) / 완료: 맨 아래 + 완료일 오름차순
+  recs.sort((a,b)=>{
+    const aDone=a.planCheckDone||false, bDone=b.planCheckDone||false;
+    if(aDone!==bDone) return aDone?1:-1;           // 완료 → 하단
+    const ad=a.planChangeDate||'9999-99-99';
+    const bd=b.planChangeDate||'9999-99-99';
+    return ad.localeCompare(bd);                    // 날짜 오름차순(가까운 것 먼저)
+  });
   document.getElementById('planCount').textContent=recs.length+'건';
   const tb=document.getElementById('planTbody');
   if(!recs.length){tb.innerHTML=`<tr><td colspan="10" class="tbl-empty">📭 데이터가 없습니다</td></tr>`;return}
-  tb.innerHTML=recs.map(r=>{
+  const doneStart=recs.findIndex(r=>r.planCheckDone);
+  tb.innerHTML=recs.map((r,idx)=>{
     const st=getPlanStatus(r);
     const diff=r.planCheckDone?null:diffDays(todayStr(),r.planChangeDate);
     const remainText=r.planCheckDone?'완료':(diff===null?'—':diff===0?'오늘':diff<0?`${Math.abs(diff)}일 지남`:`D-${diff}`);
     const rowStyle=st.key==='delayed'||st.key==='today'?'style="background:rgba(239,68,68,.04)"':'';
-    return`<tr data-rid="${r.id}" ${rowStyle}>
+    const separator=(doneStart>0&&idx===doneStart)
+      ?`<tr><td colspan="11" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
+      :'';
+    return separator+`<tr data-rid="${r.id}" ${rowStyle}>
       <td class="fw">${esc(r.agent)}</td><td>${esc(r.customer)}</td>
       <td>${esc(r.subNo||'—')}</td><td>${esc(r.billNo||'—')}</td><td>${esc(r.phone||'—')}</td>
       <td>${esc(r.activateDate||'—')}</td><td>${esc(r.planChangeDate||'—')}</td>
@@ -2347,6 +2356,17 @@ function renderSubsidyCheck(){
     return true;
   });
 
+  // ── 정렬 ①: 고객(rec) 단위 — 가장 임박한 미완료 마감일 기준 오름차순
+  //              미완료 차수가 없는(전체 완료) 고객은 맨 뒤
+  recs.sort((a,b)=>{
+    const earliest=r=>{
+      const active=r.schedule.filter(s=>!s.done&&s.periodStart<=today);
+      if(!active.length) return '9999-99-99';
+      return active.map(s=>s.deadline).sort()[0];
+    };
+    return earliest(a).localeCompare(earliest(b));
+  });
+
   // 전체 건수 = 고객 수
   document.getElementById('subsidyCount').textContent=recs.length+'건';
   const tb=document.getElementById('subsidyTbody');
@@ -2362,13 +2382,18 @@ function renderSubsidyCheck(){
   recs.forEach(r=>{
     const monthly=calcUpsell(r.oldPlan,r.newPlan,r.contract);
 
-    r.schedule.forEach((row,i)=>{
-      // 표시 기준: 해당 차수 시작일이 오늘 이하 (기간 도래) OR 이전 차수가 완료되어 다음 차수 진입
-      const periodStarted = row.periodStart <= today;
-      const prevAllDone   = i===0 || r.schedule.slice(0,i).every(pr=>pr.done);
-      // 시작일 도래했거나, 이전 차수 완료된 경우 표시
-      if(!periodStarted && !prevAllDone) return;
+    // ── 정렬 ②: 차수 행 단위 — 미완료 먼저(마감일 오름차순) → 완료 나중(마감일 오름차순)
+    const visible=r.schedule.map((row,i)=>({row,i})).filter(({row,i})=>{
+      const periodStarted=row.periodStart<=today;
+      const prevAllDone=i===0||r.schedule.slice(0,i).every(pr=>pr.done);
+      return periodStarted||prevAllDone;
+    });
+    const sortedVisible=[
+      ...visible.filter(({row})=>!row.done).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline)),
+      ...visible.filter(({row})=>row.done ).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline))
+    ];
 
+    sortedVisible.forEach(({row,i},visIdx)=>{
       const st = getMonthRowStatus(row);
       // 상태 필터 적용 (상태 필터가 있을 때만)
       if(fS && st.label !== fS) return;
@@ -2382,16 +2407,7 @@ function renderSubsidyCheck(){
           ? 'background:rgba(16,185,129,.04)'
           : '';
 
-      // 첫 번째 차수 행에만 담당자·고객·업셀일·월업셀금액 표시 (rowspan 효과)
-      const isFirstRow = i===0 || !r.schedule.slice(0,i).some(pr=>pr.periodStart<=today||(i>0&&r.schedule.slice(0,i).every(pp=>pp.done)));
-      // 간단하게: schedule 내에서 처음 표시되는 행인지
-      const visibleIdx = r.schedule.filter((pr,pi)=>{
-        if(pi>=i) return false;
-        const pStarted = pr.periodStart <= today;
-        const pPrevDone = pi===0 || r.schedule.slice(0,pi).every(pp=>pp.done);
-        return pStarted || pPrevDone;
-      }).length;
-      const isFirst = visibleIdx === 0;
+      const isFirst = visIdx === 0;
 
       rows.push({r, row, i, monthly, st, isFirst, rowBg, rowOpacity});
     });
@@ -2402,10 +2418,16 @@ function renderSubsidyCheck(){
     return;
   }
 
+  // 완료/미완료 경계 인덱스 찾기 (구분선용)
+  const doneStartIdx=rows.findIndex(({row})=>row.done);
+
   // 고객별로 자세히 패널 행을 중복 생성하지 않도록 recId 추적
   const detailRendered = new Set();
 
-  tb.innerHTML = rows.map(({r,row,i,monthly,st,isFirst,rowBg,rowOpacity})=>{
+  tb.innerHTML = rows.map(({r,row,i,monthly,st,isFirst,rowBg,rowOpacity},rowIdx)=>{
+    const separator=(doneStartIdx>0&&rowIdx===doneStartIdx)
+      ?`<tr><td colspan="13" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
+      :'';
     // 차수 배지 색상
     const ordinalColor = row.done
       ? 'var(--green-text)'
@@ -2508,7 +2530,7 @@ function renderSubsidyCheck(){
       </tr>`;
     }
 
-    return dataRow + panelRow;
+    return separator + dataRow + panelRow;
   }).join('');
 }
 function toggleSubsidyPanel(recId){
