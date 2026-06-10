@@ -2360,7 +2360,7 @@ function renderSubsidyCheck(){
   //              미완료 차수가 없는(전체 완료) 고객은 맨 뒤
   recs.sort((a,b)=>{
     const earliest=r=>{
-      const active=r.schedule.filter(s=>!s.done&&s.periodStart<=today);
+      const active=r.schedule.filter(s=>!s.done); // 기간 도래 여부 무관, 미완료 전체 대상
       if(!active.length) return '9999-99-99';
       return active.map(s=>s.deadline).sort()[0];
     };
@@ -2383,11 +2383,8 @@ function renderSubsidyCheck(){
     const monthly=calcUpsell(r.oldPlan,r.newPlan,r.contract);
 
     // ── 정렬 ②: 차수 행 단위 — 미완료 먼저(마감일 오름차순) → 완료 나중(마감일 오름차순)
-    const visible=r.schedule.map((row,i)=>({row,i})).filter(({row,i})=>{
-      const periodStarted=row.periodStart<=today;
-      const prevAllDone=i===0||r.schedule.slice(0,i).every(pr=>pr.done);
-      return periodStarted||prevAllDone;
-    });
+    // 전체 차수(4차) 항상 표시 — 기간 도래 여부와 무관, 완료 시 하단 이동
+    const visible=r.schedule.map((row,i)=>({row,i}));
     const sortedVisible=[
       ...visible.filter(({row})=>!row.done).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline)),
       ...visible.filter(({row})=>row.done ).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline))
