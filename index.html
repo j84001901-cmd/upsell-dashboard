@@ -575,7 +575,39 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
   transition:all var(--transition);
 }
 .chk-item.checked .chk-box{background:var(--green);border-color:var(--green);color:#fff}
-
+/* ── 월 피커 ── */
+.month-picker{display:flex;align-items:center;gap:6px;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-xl);padding:5px 10px}
+.mp-btn{width:26px;height:26px;border:none;background:transparent;border-radius:var(--r-md);cursor:pointer;font-size:16px;color:var(--ink-2);display:flex;align-items:center;justify-content:center;transition:all var(--transition);line-height:1}
+.mp-btn:hover{background:var(--brand-dim);color:var(--brand-text)}
+.mp-label{font-size:13px;font-weight:700;color:var(--ink-1);min-width:88px;text-align:center;white-space:nowrap}
+.mp-all{padding:4px 10px;border:1.5px solid var(--border);border-radius:99px;background:transparent;font-size:11px;font-weight:700;color:var(--ink-3);cursor:pointer;transition:all var(--transition);white-space:nowrap}
+.mp-all.active,.mp-all:hover{background:var(--brand);border-color:var(--brand);color:#fff}
+.month-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;background:var(--brand-dim);color:var(--brand-text);margin-left:6px}
+/* ── 기네스 기록 카드 ── */
+.gns-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px}
+.gns-card{border-radius:var(--r-lg);padding:18px 20px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.gns-card-daily{background:linear-gradient(135deg,rgba(255,249,196,.9),rgba(255,253,231,.6));border:1.5px solid rgba(245,158,11,.35)}
+.gns-card-monthly{background:linear-gradient(135deg,rgba(220,252,231,.9),rgba(240,253,244,.6));border:1.5px solid rgba(34,197,94,.35)}
+[data-theme="dark"] .gns-card-daily{background:linear-gradient(135deg,rgba(120,80,0,.22),rgba(90,60,0,.12));border-color:rgba(245,158,11,.3)}
+[data-theme="dark"] .gns-card-monthly{background:linear-gradient(135deg,rgba(0,100,40,.22),rgba(0,80,30,.12));border-color:rgba(34,197,94,.3)}
+.gns-emoji{font-size:26px;line-height:1;margin-bottom:2px}
+.gns-type{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase}
+.gns-type-daily{color:var(--amber)}
+.gns-type-monthly{color:var(--green)}
+.gns-name{font-size:21px;font-weight:900;color:var(--ink-1);letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gns-period{font-size:11px;color:var(--ink-3);font-weight:600}
+.gns-stats{display:flex;align-items:center;gap:10px;margin-top:2px}
+.gns-count{font-size:17px;font-weight:800}
+.gns-count-daily{color:var(--amber)}
+.gns-count-monthly{color:var(--green)}
+.gns-amt{font-size:11px;color:var(--ink-3);font-weight:600}
+.gns-crown{position:absolute;right:14px;top:12px;font-size:32px;opacity:.18}
+@media(max-width:600px){.gns-grid{grid-template-columns:1fr}}
+/* ── 뷰모드 토글 (월별/연간/전체) ── */
+.view-toggle{display:flex;background:var(--surface-2);border:1.5px solid var(--border);border-radius:var(--r-xl);padding:3px;gap:2px}
+.vt-btn{padding:5px 13px;border:none;background:transparent;border-radius:calc(var(--r-xl) - 3px);font-size:12px;font-weight:700;color:var(--ink-3);cursor:pointer;transition:all var(--transition);white-space:nowrap}
+.vt-btn.active{background:var(--brand);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.vt-btn:hover:not(.active){background:var(--brand-dim);color:var(--brand-text)}
 </style>
 </head>
 <body>
@@ -698,8 +730,20 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
     <!-- § DASHBOARD -->
     <section class="section active" id="sec-dashboard">
       <div class="sec-header">
-        <div><h2>대시보드</h2><p>팀 전체 업셀 실적 현황</p></div>
-        <div class="sec-actions"><button class="btn btn-primary btn-sm" onclick="goSection('form',document.querySelector('[data-sec=form]'))">+ 실적 입력</button></div>
+        <div><h2>대시보드</h2><p id="dashSubLabel">팀 전체 업셀 실적 현황</p></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="view-toggle">
+            <button class="vt-btn" id="vtMonth" onclick="setViewMode('month')">월별</button>
+            <button class="vt-btn" id="vtYear"  onclick="setViewMode('year')">연간</button>
+            <button class="vt-btn" id="vtAll"   onclick="setViewMode('all')">전체</button>
+          </div>
+          <div class="month-picker" id="dashPicker">
+            <button class="mp-btn" onclick="navigatePeriod(-1)" title="이전">‹</button>
+            <span class="mp-label" id="dashMonthLabel">—</span>
+            <button class="mp-btn" onclick="navigatePeriod(1)" title="다음">›</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="goSection('form',document.querySelector('[data-sec=form]'))">+ 실적 입력</button>
+        </div>
       </div>
       <div class="kpi-grid">
         <div class="kpi-card"><div class="kpi-card-bar"></div><div class="kpi-icon">📋</div><div class="kpi-label">전체 건수</div><div class="kpi-val" id="kpi-count">0</div><div class="kpi-sub">총 입력 실적</div></div>
@@ -716,6 +760,14 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <div class="card">
         <div class="card-header"><div class="card-header-left"><span>📊</span><span class="card-title">인원별 집계</span></div></div>
         <div class="tbl-wrap"><table class="sum-tbl"><thead><tr><th>순위</th><th>담당자</th><th>총 건수</th><th>총 업셀금액</th><th>평균 업셀금액</th></tr></thead><tbody id="dashSumTbody"></tbody></table></div>
+      </div>
+      <!-- 기네스 기록 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left"><span>🏆</span><span class="card-title">기네스 기록</span></div>
+          <div style="font-size:11px;color:var(--ink-4);font-weight:600">전체 기간 · 건수 기준 최고 기록</div>
+        </div>
+        <div class="gns-grid" id="guinnessGrid"></div>
       </div>
     </section>
 
@@ -845,6 +897,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
     <section class="section" id="sec-list">
       <div class="sec-header"><div><h2>실적 리스트</h2><p>조건별 실적 조회</p></div><div class="sec-actions"><button class="btn btn-success btn-sm" onclick="downloadCSV()">⬇ CSV</button><button class="btn btn-success btn-sm" onclick="downloadExcel()">⬇ Excel</button></div></div>
       <div class="filter-bar">
+        <div class="filter-group"><div class="filter-lbl">업셀 월</div><select class="fi" id="flt_month" onchange="renderList()"><option value="">전체</option></select></div>
         <div class="filter-group"><div class="filter-lbl">담당자명</div><input class="fi" id="flt_agent" type="text" placeholder="검색…" oninput="renderList()"/></div>
         <div class="filter-group"><div class="filter-lbl">고객명</div><input class="fi" id="flt_customer" type="text" placeholder="검색…" oninput="renderList()"/></div>
         <div class="filter-group"><div class="filter-lbl">선택약정</div><select class="fi" id="flt_contract" onchange="renderList()"><option value="">전체</option><option>기가입</option><option>신규가입</option><option>미가입</option></select></div>
@@ -867,7 +920,17 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
     <section class="section" id="sec-ranking">
       <div class="sec-header">
         <div><h2>담당자 순위</h2><p>합산 건수 기준 (맞춤제안 + 오프라인) · 동률 시 업셀금액 높은 순 · 전일 마감예상</p></div>
-        <div class="sec-actions">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="view-toggle">
+            <button class="vt-btn" id="vtMonth2" onclick="setViewMode('month')">월별</button>
+            <button class="vt-btn" id="vtYear2"  onclick="setViewMode('year')">연간</button>
+            <button class="vt-btn" id="vtAll2"   onclick="setViewMode('all')">전체</button>
+          </div>
+          <div class="month-picker" id="rankPicker">
+            <button class="mp-btn" onclick="navigatePeriod(-1)" title="이전">‹</button>
+            <span class="mp-label" id="rankMonthLabel">—</span>
+            <button class="mp-btn" onclick="navigatePeriod(1)" title="다음">›</button>
+          </div>
           <button class="btn btn-primary btn-sm" id="btnOfflineModal" onclick="openOfflineModal()">+ 오프라인 실적 입력</button>
         </div>
       </div>
@@ -974,7 +1037,12 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
 
     <!-- § 대납 진행 체크 -->
     <section class="section" id="sec-subsidycheck">
-      <div class="sec-header"><div><h2>대납 진행 체크</h2><p>94일치 월별 분할 대납 관리 · 당월 말일 이전 완료 기준</p></div></div>
+      <div class="sec-header"><div><h2>대납 진행 체크</h2><p>94일치 월별 분할 대납 관리 · 당월 말일 이전 완료 기준</p></div>
+        <div class="sec-actions" style="gap:8px">
+          <input type="month" id="subsidyDlMonth" class="fi" style="padding:5px 10px;font-size:12px;width:150px" title="다운로드할 월 선택 (빈칸=전체)"/>
+          <button class="btn btn-success btn-sm" onclick="downloadSubsidyExcel()">⬇ 대납 현황 Excel</button>
+        </div>
+      </div>
       <div class="filter-bar">
         <div class="filter-group"><div class="filter-lbl">담당자명</div><input class="fi" id="sf_agent" type="text" placeholder="검색…" oninput="renderSubsidyCheck()"/></div>
         <div class="filter-group"><div class="filter-lbl">고객명</div><input class="fi" id="sf_customer" type="text" placeholder="검색…" oninput="renderSubsidyCheck()"/></div>
@@ -986,10 +1054,10 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <div class="card">
         <div class="card-header">
           <div class="card-header-left"><span>💳</span><span class="card-title">대납 목록</span><span class="chip" id="subsidyCount">0건</span></div>
-          <div style="font-size:11px;color:var(--ink-4);font-weight:600">※ 대납 시작일 도래 차수부터 순서대로 표시</div>
+          <div style="font-size:11px;color:var(--ink-4);font-weight:600">※ 마감일 오름차순 · 완료 항목은 하단</div>
         </div>
         <div class="tbl-wrap">
-          <table class="tbl" id="subsidyTable" style="min-width:1100px">
+          <table class="tbl" id="subsidyTable" style="min-width:1200px">
             <thead><tr>
               <th>담당자</th><th>고객명</th><th>업셀일</th>
               <th style="text-align:right">월 업셀금액</th>
@@ -997,7 +1065,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
               <th>대납 기간</th><th>일수</th>
               <th style="text-align:right">대납 금액</th>
               <th>마감일</th><th>상태</th>
-              <th>완료 체크</th><th>메모</th><th style="width:72px">자세히</th>
+              <th>완료 체크</th><th>완료일자</th><th>메모</th><th style="width:72px">자세히</th>
             </tr></thead>
             <tbody id="subsidyTbody"></tbody>
           </table>
@@ -1379,6 +1447,100 @@ function calcSubsidyAmt(oVAT,nVAT,startDate,endDate,contract){
 }
 
 /* ══════════════════════════════════════════════════
+   § C-2. 조회 단위 상태 & 헬퍼 (월별 / 연간 / 전체)
+══════════════════════════════════════════════════ */
+let _viewMode     = 'month';                       // 'month' | 'year' | 'all'
+let _selectedMonth= todayStr().substring(0,7);     // 'YYYY-MM'
+let _selectedYear = todayStr().substring(0,4);     // 'YYYY'
+
+// 현재 조회 단위에 맞게 records 필터링
+function getMonthRecords(){
+  const recs = getVisibleRecords();
+  if(_viewMode==='all')   return recs;
+  if(_viewMode==='year')  return recs.filter(r=>r.activateDate&&r.activateDate.startsWith(_selectedYear));
+  if(_viewMode==='month') return recs.filter(r=>r.activateDate&&r.activateDate.startsWith(_selectedMonth));
+  return recs;
+}
+
+// 조회 단위 전환
+function setViewMode(mode){
+  _viewMode = mode;
+  if(mode==='month' && !_selectedMonth) _selectedMonth = todayStr().substring(0,7);
+  if(mode==='year'  && !_selectedYear)  _selectedYear  = todayStr().substring(0,4);
+  _onMonthChange();
+}
+
+// ‹ › 네비게이션 (모드에 따라 월·연 이동)
+function navigatePeriod(delta){
+  if(_viewMode==='month'){
+    const base = _selectedMonth || todayStr().substring(0,7);
+    const [y,m] = base.split('-').map(Number);
+    const d = new Date(y, m-1+delta, 1);
+    _selectedMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  } else if(_viewMode==='year'){
+    _selectedYear = String(parseInt(_selectedYear||todayStr().substring(0,4)) + delta);
+  }
+  _onMonthChange();
+}
+
+// 하위 호환: 기존 changeSelectedMonth / toggleAllMonths 유지
+function changeSelectedMonth(delta){ navigatePeriod(delta); }
+function toggleAllMonths(){ setViewMode(_viewMode==='all'?'month':'all'); }
+
+// 공통 갱신
+function _onMonthChange(){
+  updateMonthPickerUI();
+  renderDashboard();
+  renderRanking();
+  renderList();
+}
+
+// 피커 UI 동기화
+function updateMonthPickerUI(){
+  // ① 라벨
+  let label = '전체 기간';
+  if(_viewMode==='month') label=`${_selectedMonth.substring(0,4)}년 ${parseInt(_selectedMonth.substring(5,7))}월`;
+  if(_viewMode==='year')  label=`${_selectedYear}년`;
+
+  ['dashMonthLabel','rankMonthLabel'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=label;
+  });
+
+  // ② 네비게이션 피커 표시/숨김 (전체 모드엔 숨김)
+  const showPicker = _viewMode!=='all';
+  ['dashPicker','rankPicker'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.visibility = showPicker ? 'visible' : 'hidden';
+  });
+
+  // ③ 뷰모드 버튼 active
+  const modeMap={vtMonth:'month',vtYear:'year',vtAll:'all',vtMonth2:'month',vtYear2:'year',vtAll2:'all'};
+  Object.entries(modeMap).forEach(([id,mode])=>{
+    const el=document.getElementById(id); if(el) el.classList.toggle('active',mode===_viewMode);
+  });
+
+  // ④ 대시보드 서브 설명
+  const sub=document.getElementById('dashSubLabel');
+  if(sub) sub.textContent=`${label} 업셀 실적 현황`;
+
+  // ⑤ 리스트 월 필터 갱신
+  syncListMonthFilter();
+}
+
+// 리스트 월 드롭다운 옵션 (데이터 기반)
+function syncListMonthFilter(){
+  const sel=document.getElementById('flt_month');
+  if(!sel) return;
+  const recs=getVisibleRecords();
+  const months=[...new Set(recs.map(r=>(r.activateDate||'').substring(0,7)).filter(Boolean))].sort().reverse();
+  const cur=sel.value;
+  sel.innerHTML='<option value="">전체</option>'+months.map(m=>{
+    const [y,mo]=m.split('-');
+    return `<option value="${m}" ${m===cur?'selected':''}>${y}년 ${parseInt(mo)}월</option>`;
+  }).join('');
+}
+
+/* ══════════════════════════════════════════════════
    § D. INITIAL SETUP
 ══════════════════════════════════════════════════ */
 async function initSuperAdmin(){
@@ -1505,6 +1667,7 @@ async function enterApp(){
   applyLogo();
   updateNavBadge();
   updateAlertBadges();
+  updateMonthPickerUI();   // 월 피커 초기 라벨 설정
   renderDashboard();
 }
 function canAccessRole(required){
@@ -1942,7 +2105,7 @@ document.addEventListener('click',e=>{
    § O. RENDER — DASHBOARD
 ══════════════════════════════════════════════════ */
 function renderDashboard(){
-  const recs=getVisibleRecords();
+  const recs=getMonthRecords();   // 선택 월 필터 적용
   const agg=aggregate(recs);
   const total=recs.reduce((s,r)=>s+(r.upsellAmt||0),0);
   document.getElementById('kpi-count').textContent=recs.length;
@@ -1952,7 +2115,72 @@ function renderDashboard(){
   else{document.getElementById('kpi-top').textContent='—';document.getElementById('kpi-top-sub').textContent='건수 기준'}
   renderRankCards('dashRankGrid',agg.slice(0,3));
   renderSumTable('dashSumTbody',agg);
+  renderGuinnessRecords();        // 기네스 기록 (전체 기간 기준)
   updateAlertBadges();
+}
+
+/* ── 기네스 기록: 일간 / 월간 최고 1위 ──────────────────────────
+   전체 기간 기준 (월 필터 무관) · 건수 1위, 동률 시 업셀금액 기준
+─────────────────────────────────────────────────────────────── */
+function renderGuinnessRecords(){
+  const el=document.getElementById('guinnessGrid');
+  if(!el) return;
+
+  const allRecs=getVisibleRecords(); // 권한 필터만, 월 필터 미적용
+
+  if(!allRecs.length){
+    el.innerHTML=`<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--ink-4);font-size:13px">📭 데이터가 없습니다</div>`;
+    return;
+  }
+
+  // ── 일간 최고: 담당자 × 날짜 기준 집계
+  const dailyMap={};
+  allRecs.forEach(r=>{
+    if(!r.agent||!r.activateDate) return;
+    const key=`${r.agent}|||${r.activateDate}`;
+    if(!dailyMap[key]) dailyMap[key]={agent:r.agent,date:r.activateDate,count:0,total:0};
+    dailyMap[key].count++;
+    dailyMap[key].total+=(r.upsellAmt||0);
+  });
+  const daily=Object.values(dailyMap).sort((a,b)=>b.count!==a.count?b.count-a.count:b.total-a.total)[0];
+
+  // ── 월간 최고: 담당자 × 년월 기준 집계
+  const monthlyMap={};
+  allRecs.forEach(r=>{
+    if(!r.agent||!r.activateDate) return;
+    const mo=r.activateDate.substring(0,7);
+    const key=`${r.agent}|||${mo}`;
+    if(!monthlyMap[key]) monthlyMap[key]={agent:r.agent,month:mo,count:0,total:0};
+    monthlyMap[key].count++;
+    monthlyMap[key].total+=(r.upsellAmt||0);
+  });
+  const monthly=Object.values(monthlyMap).sort((a,b)=>b.count!==a.count?b.count-a.count:b.total-a.total)[0];
+
+  const fmtMo=m=>{const[y,mo]=m.split('-');return`${y}년 ${parseInt(mo)}월`;};
+
+  el.innerHTML=`
+    <div class="gns-card gns-card-daily">
+      <div class="gns-crown">⚡</div>
+      <div class="gns-emoji">⚡</div>
+      <div class="gns-type gns-type-daily">일간 기네스</div>
+      <div class="gns-name">${esc(daily.agent)}</div>
+      <div class="gns-period">📅 ${daily.date}</div>
+      <div class="gns-stats">
+        <span class="gns-count gns-count-daily">${daily.count}건</span>
+        <span class="gns-amt">${fmt(daily.total)}</span>
+      </div>
+    </div>
+    <div class="gns-card gns-card-monthly">
+      <div class="gns-crown">🌟</div>
+      <div class="gns-emoji">🌟</div>
+      <div class="gns-type gns-type-monthly">월간 기네스</div>
+      <div class="gns-name">${esc(monthly.agent)}</div>
+      <div class="gns-period">📅 ${fmtMo(monthly.month)}</div>
+      <div class="gns-stats">
+        <span class="gns-count gns-count-monthly">${monthly.count}건</span>
+        <span class="gns-amt">${fmt(monthly.total)}</span>
+      </div>
+    </div>`;
 }
 
 /* ══════════════════════════════════════════════════
@@ -1980,8 +2208,13 @@ async function renderRanking(){
   const deadlineEl=document.getElementById('deadlineBaseDate');
   if(deadlineEl) deadlineEl.textContent=yesterday;
 
-  const recs=getVisibleRecords();
-  const offline=await DB.getOffline();
+  const recs=getMonthRecords();   // 선택 월/연 필터 적용
+  const allOffline=await DB.getOffline();
+  // 오프라인 실적도 동일 단위 필터 적용 (o.date 기준)
+  const periodPrefix = _viewMode==='all' ? '' : _viewMode==='year' ? _selectedYear : _selectedMonth;
+  const offline = periodPrefix
+    ? allOffline.filter(o=>o.date&&o.date.startsWith(periodPrefix))
+    : allOffline;
 
   /* ── 1. 맞춤제안 집계 (인센티브 대상) ── */
   const customMap={};
@@ -2198,11 +2431,14 @@ async function deleteOffline(id){
 const CONT_BADGE={'기가입':'b-green','신규가입':'b-sky','미가입':'b-slate'};
 const SUBS_BADGE={'대납 있음':'b-amber','대납 없음':'b-slate'};
 function renderList(){
+  syncListMonthFilter();        // 월 드롭다운 옵션 최신화
+  const fM=document.getElementById('flt_month')?.value||'';
   const fA=document.getElementById('flt_agent')?.value.trim().toLowerCase()||'';
   const fC=document.getElementById('flt_customer')?.value.trim().toLowerCase()||'';
   const fCo=document.getElementById('flt_contract')?.value||'';
   const fS=document.getElementById('flt_subsidy')?.value||'';
   const recs=getVisibleRecords().filter(r=>{
+    if(fM&&!(r.activateDate||'').startsWith(fM))return false;
     if(fA&&!r.agent?.toLowerCase().includes(fA))return false;
     if(fC&&!r.customer?.toLowerCase().includes(fC))return false;
     if(fCo&&r.contract!==fCo)return false;
@@ -2227,7 +2463,7 @@ function renderList(){
     <td class="ctr">${canEditRecord(r)?`<button class="btn-icon" title="삭제" onclick="deleteRecord('${r.id}')">🗑</button>`:'—'}</td>
   </tr>`).join('');
 }
-function clearFilters(){['flt_agent','flt_customer'].forEach(i=>document.getElementById(i).value='');['flt_contract','flt_subsidy'].forEach(i=>document.getElementById(i).value='');renderList()}
+function clearFilters(){['flt_agent','flt_customer'].forEach(i=>document.getElementById(i).value='');['flt_contract','flt_subsidy','flt_month'].forEach(i=>document.getElementById(i).value='');renderList()}
 async function deleteRecord(id){
   const all=_cache.records||[];const rec=all.find(r=>r.id===id);
   if(!rec||!canEditRecord(rec)){toast('삭제 권한이 없습니다','err');return}
@@ -2327,126 +2563,89 @@ function getMonthRowStatus(row){
 }
 
 function renderSubsidyCheck(){
+  // 월 다운로드 picker 기본값 초기화 (최초 1회)
+  const dlMo=document.getElementById('subsidyDlMonth');
+  if(dlMo&&!dlMo.value) dlMo.value=todayStr().substring(0,7);
+
   const fA=document.getElementById('sf_agent')?.value.trim().toLowerCase()||'';
   const fC=document.getElementById('sf_customer')?.value.trim().toLowerCase()||'';
   const fS=document.getElementById('sf_status')?.value||'';
   const today=todayStr();
 
-  // 대납 있음인 것만 + 스케줄 재계산
+  // 대납 있음 + 스케줄 재계산
   let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
   recs=recs.map(r=>{
     const schedule=r.subsidySchedule&&r.subsidySchedule.length
       ? r.subsidySchedule
       : calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
-    return {...r, schedule};
+    return {...r,schedule};
   });
 
-  // 필터: 담당자·고객명은 rec 단위, 상태는 차수 행 단위로 처리
+  // 담당자·고객명 필터
   recs=recs.filter(r=>{
     if(fA&&!r.agent?.toLowerCase().includes(fA))return false;
     if(fC&&!r.customer?.toLowerCase().includes(fC))return false;
-    // 상태 필터 — 해당 상태의 차수가 하나라도 있으면 표시
-    if(fS){
-      const hasMatch=r.schedule.some(row=>{
-        const st=getMonthRowStatus(row);
-        return st.label===fS;
-      });
-      if(!hasMatch)return false;
-    }
     return true;
   });
 
-  // ── 정렬 ①: 고객(rec) 단위 — 가장 임박한 미완료 마감일 기준 오름차순
-  //              미완료 차수가 없는(전체 완료) 고객은 맨 뒤
-  recs.sort((a,b)=>{
-    const earliest=r=>{
-      const active=r.schedule.filter(s=>!s.done); // 기간 도래 여부 무관, 미완료 전체 대상
-      if(!active.length) return '9999-99-99';
-      return active.map(s=>s.deadline).sort()[0];
-    };
-    return earliest(a).localeCompare(earliest(b));
-  });
-
-  // 전체 건수 = 고객 수
   document.getElementById('subsidyCount').textContent=recs.length+'건';
   const tb=document.getElementById('subsidyTbody');
   if(!recs.length){
-    tb.innerHTML=`<tr><td colspan="12" class="tbl-empty">📭 대납 있음 데이터가 없습니다</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="14" class="tbl-empty">📭 대납 있음 데이터가 없습니다</td></tr>`;
     return;
   }
 
-  // 각 record → 차수별 행으로 펼쳐서 렌더
-  // 표시 조건: 해당 차수의 periodStart <= 오늘 이거나 (기간 도래) 이미 완료된 차수
-  // → 즉, 시작일이 아직 안 된 미래 차수는 숨기고, 도래한 차수부터 순서대로 표시
+  // ── 모든 차수를 하나의 평면 배열로 펼치기 ─────────────────
   const rows=[];
   recs.forEach(r=>{
     const monthly=calcUpsell(r.oldPlan,r.newPlan,r.contract);
-
-    // ── 정렬 ②: 차수 행 단위 — 미완료 먼저(마감일 오름차순) → 완료 나중(마감일 오름차순)
-    // 전체 차수(4차) 항상 표시 — 기간 도래 여부와 무관, 완료 시 하단 이동
-    const visible=r.schedule.map((row,i)=>({row,i}));
-    const sortedVisible=[
-      ...visible.filter(({row})=>!row.done).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline)),
-      ...visible.filter(({row})=>row.done ).sort((a,b)=>a.row.deadline.localeCompare(b.row.deadline))
-    ];
-
-    sortedVisible.forEach(({row,i},visIdx)=>{
-      const st = getMonthRowStatus(row);
-      // 상태 필터 적용 (상태 필터가 있을 때만)
-      if(fS && st.label !== fS) return;
-
-      const isHighlight = (st.key==='delayed'||st.key==='today') && !row.done;
-      // 완료 행은 연하게
-      const rowOpacity = row.done ? 'opacity:.55' : '';
-      const rowBg = isHighlight
-        ? 'background:rgba(239,68,68,.05)'
-        : row.done
-          ? 'background:rgba(16,185,129,.04)'
-          : '';
-
-      const isFirst = visIdx === 0;
-
-      rows.push({r, row, i, monthly, st, isFirst, rowBg, rowOpacity});
+    r.schedule.forEach((row,i)=>{
+      const st=getMonthRowStatus(row);
+      if(fS&&st.label!==fS)return; // 상태 필터
+      rows.push({r,row,i,monthly,st});
     });
   });
 
   if(!rows.length){
-    tb.innerHTML=`<tr><td colspan="12" class="tbl-empty">📭 현재 도래한 대납 차수가 없습니다</td></tr>`;
+    tb.innerHTML=`<tr><td colspan="14" class="tbl-empty">📭 조건에 맞는 대납 차수가 없습니다</td></tr>`;
     return;
   }
 
-  // 완료/미완료 경계 인덱스 찾기 (구분선용)
+  // ── 마감일 오름차순 전체 정렬 — 미완료 먼저, 완료 하단 ──────
+  rows.sort((a,b)=>{
+    if(a.row.done!==b.row.done) return a.row.done?1:-1;
+    return a.row.deadline.localeCompare(b.row.deadline);
+  });
+
+  // 완료 구분선 위치
   const doneStartIdx=rows.findIndex(({row})=>row.done);
 
-  // 고객별로 자세히 패널 행을 중복 생성하지 않도록 recId 추적
-  const detailRendered = new Set();
+  // 자세히 패널: 고객당 1개 (첫 등장 위치에 삽입)
+  const detailRendered=new Set();
 
-  tb.innerHTML = rows.map(({r,row,i,monthly,st,isFirst,rowBg,rowOpacity},rowIdx)=>{
+  tb.innerHTML=rows.map(({r,row,i,monthly,st},rowIdx)=>{
+    // 완료 구분선
     const separator=(doneStartIdx>0&&rowIdx===doneStartIdx)
-      ?`<tr><td colspan="13" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
+      ?`<tr><td colspan="14" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
       :'';
+
+    // 행 스타일
+    const isHighlight=(st.key==='delayed'||st.key==='today')&&!row.done;
+    const rowStyle=`${isHighlight?'background:rgba(239,68,68,.05)':row.done?'background:rgba(16,185,129,.04)':''};${row.done?'opacity:.7':''}`;
+
     // 차수 배지 색상
-    const ordinalColor = row.done
-      ? 'var(--green-text)'
-      : st.key==='delayed' ? 'var(--red-text)'
-      : st.key==='today'   ? 'var(--orange-text)'
-      : st.key==='imminent'? 'var(--amber-text)'
-      : 'var(--brand-text)';
-    const ordinalBg = row.done
-      ? 'var(--green-dim)'
-      : st.key==='delayed' ? 'var(--red-dim)'
-      : st.key==='today'   ? 'var(--orange-dim)'
-      : st.key==='imminent'? 'var(--amber-dim)'
-      : 'var(--brand-dim)';
+    const ordinalBg=row.done?'var(--green-dim)':st.key==='delayed'?'var(--red-dim)':st.key==='today'?'var(--orange-dim)':st.key==='imminent'?'var(--amber-dim)':'var(--brand-dim)';
+    const ordinalColor=row.done?'var(--green-text)':st.key==='delayed'?'var(--red-text)':st.key==='today'?'var(--orange-text)':st.key==='imminent'?'var(--amber-text)':'var(--brand-text)';
 
-    // 자세히 패널 ID (고객당 1개)
-    const panelId = `sdp_${r.id}`;
-    // 자세히 버튼: 첫 차수 행에만 표시
-    const detailBtn = isFirst
-      ? `<button class="btn-detail" id="dBtn_${r.id}" onclick="toggleSubsidyPanel('${r.id}')" title="전체 대납 일정 보기">📋 자세히</button>`
-      : `<span style="font-size:11px;color:var(--ink-4)"></span>`;
+    // 완료일자 표시
+    const doneDateHtml=row.done&&row.doneDate
+      ?`<span style="font-size:11px;color:var(--green-text);font-weight:600">${row.doneDate}</span>`
+      :`<span style="color:var(--ink-4);font-size:11px">—</span>`;
 
-    const dataRow = `<tr data-rid="${r.id}" style="${rowBg};${rowOpacity}">
+    // 자세히 버튼 (모든 행에 표시, data-panel 속성으로 패널 ID 연결)
+    const detailBtn=`<button class="btn-detail" data-panel="${r.id}" onclick="toggleSubsidyPanel('${r.id}')" title="전체 대납 일정 보기">📋 자세히</button>`;
+
+    const dataRow=`<tr data-rid="${r.id}" style="${rowStyle}">
       <td class="fw" style="white-space:nowrap">${esc(r.agent)}</td>
       <td style="white-space:nowrap">${esc(r.customer)}</td>
       <td style="white-space:nowrap;font-size:11px">${esc(r.activateDate||'—')}</td>
@@ -2464,35 +2663,26 @@ function renderSubsidyCheck(){
       </td>
       <td class="ctr"><span class="status-chip ${st.cls}">${st.label}</span></td>
       <td class="ctr">
-        <button class="btn-check ${row.done?'done':''}"
-          onclick="toggleScheduleRow('${r.id}',${i})"
-          style="white-space:nowrap">
+        <button class="btn-check ${row.done?'done':''}" onclick="toggleScheduleRow('${r.id}',${i})" style="white-space:nowrap">
           ${row.done?'✅ 완료':'☐ 완료'}
         </button>
       </td>
-      <td>${isFirst?`<input type="text" class="fi" style="min-width:90px;padding:5px 8px;font-size:11px" value="${esc(r.subsidyCheckMemo||'')}" placeholder="메모" onchange="updateSubsidyMemo('${r.id}',this.value)"/>`:''}</td>
+      <td class="ctr">${doneDateHtml}</td>
+      <td><input type="text" class="fi" style="min-width:90px;padding:5px 8px;font-size:11px" value="${esc(r.subsidyCheckMemo||'')}" placeholder="메모" onchange="updateSubsidyMemo('${r.id}',this.value)"/></td>
       <td class="ctr">${detailBtn}</td>
     </tr>`;
 
-    // 자세히 패널 — 고객당 1번만 생성 (첫 차수 행 다음에 삽입)
-    let panelRow = '';
-    if(isFirst && !detailRendered.has(r.id)){
+    // 자세히 패널 — 고객당 1개, 첫 등장 직후 삽입
+    let panelRow='';
+    if(!detailRendered.has(r.id)){
       detailRendered.add(r.id);
-      const totalAmt = r.schedule.reduce((s,rw)=>s+rw.amt,0);
-      const doneAmt  = r.schedule.filter(rw=>rw.done).reduce((s,rw)=>s+rw.amt,0);
-      const scheduleRows = r.schedule.map((rw,ri)=>{
-        const rwSt = getMonthRowStatus(rw);
-        const rwOrdBg = rw.done?'var(--green-dim)'
-          : rwSt.key==='delayed'?'var(--red-dim)'
-          : rwSt.key==='today'?'var(--orange-dim)'
-          : rwSt.key==='imminent'?'var(--amber-dim)'
-          :'var(--brand-dim)';
-        const rwOrdColor = rw.done?'var(--green-text)'
-          : rwSt.key==='delayed'?'var(--red-text)'
-          : rwSt.key==='today'?'var(--orange-text)'
-          : rwSt.key==='imminent'?'var(--amber-text)'
-          :'var(--brand-text)';
-        return `<div class="sdp-row ${rw.done?'done-row':''}">
+      const totalAmt=r.schedule.reduce((s,rw)=>s+rw.amt,0);
+      const doneAmt=r.schedule.filter(rw=>rw.done).reduce((s,rw)=>s+rw.amt,0);
+      const scheduleRows=r.schedule.map((rw,ri)=>{
+        const rwSt=getMonthRowStatus(rw);
+        const rwOrdBg=rw.done?'var(--green-dim)':rwSt.key==='delayed'?'var(--red-dim)':rwSt.key==='today'?'var(--orange-dim)':rwSt.key==='imminent'?'var(--amber-dim)':'var(--brand-dim)';
+        const rwOrdColor=rw.done?'var(--green-text)':rwSt.key==='delayed'?'var(--red-text)':rwSt.key==='today'?'var(--orange-text)':rwSt.key==='imminent'?'var(--amber-text)':'var(--brand-text)';
+        return`<div class="sdp-row ${rw.done?'done-row':''}">
           <span style="background:${rwOrdBg};color:${rwOrdColor};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:800">${ri+1}차${rw.done?' ✅':''}</span>
           <span style="font-size:11px;color:var(--ink-2)">${rw.periodStart} ~ ${rw.periodEnd}</span>
           <span style="font-size:11px;font-weight:700;color:var(--ink-2)">${rw.days}일</span>
@@ -2502,11 +2692,12 @@ function renderSubsidyCheck(){
           <button class="btn-check ${rw.done?'done':''}" onclick="toggleScheduleRow('${r.id}',${ri})" style="padding:3px 9px;font-size:11px">
             ${rw.done?'✅ 완료':'☐ 완료'}
           </button>
+          <span style="font-size:10px;color:var(--ink-4)">${rw.done&&rw.doneDate?'완료: '+rw.doneDate:''}</span>
         </div>`;
       }).join('');
 
-      panelRow = `<tr id="${panelId}" style="display:none">
-        <td colspan="13" style="padding:0">
+      panelRow=`<tr id="sdp_${r.id}" style="display:none">
+        <td colspan="14" style="padding:0">
           <div class="subsidy-detail-panel">
             <div class="sdp-header">
               <div class="sdp-title">📋 ${esc(r.customer)} 전체 대납 일정 (${r.schedule.length}차)</div>
@@ -2517,8 +2708,8 @@ function renderSubsidyCheck(){
               </div>
             </div>
             <div style="padding:4px 0">
-              <div style="display:grid;grid-template-columns:60px 180px 60px 100px 140px 90px 80px;gap:8px;padding:6px 16px;font-size:10px;font-weight:700;color:var(--ink-4);letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--border-2)">
-                <span>차수</span><span>기간</span><span>일수</span><span>금액</span><span>마감일</span><span>상태</span><span>완료</span>
+              <div style="display:grid;grid-template-columns:60px 180px 60px 100px 140px 90px 80px 90px;gap:8px;padding:6px 16px;font-size:10px;font-weight:700;color:var(--ink-4);letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--border-2)">
+                <span>차수</span><span>기간</span><span>일수</span><span>금액</span><span>마감일</span><span>상태</span><span>완료</span><span>완료일자</span>
               </div>
               ${scheduleRows}
             </div>
@@ -2527,17 +2718,19 @@ function renderSubsidyCheck(){
       </tr>`;
     }
 
-    return separator + dataRow + panelRow;
+    return separator+dataRow+panelRow;
   }).join('');
 }
 function toggleSubsidyPanel(recId){
-  const panelId = 'sdp_'+recId;
-  const panel = document.getElementById(panelId);
-  const btn   = document.getElementById('dBtn_'+recId);
-  if(!panel) return;
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : '';
-  if(btn){ btn.classList.toggle('open', !isOpen); btn.textContent = isOpen ? '📋 자세히' : '🔼 접기'; }
+  const panel=document.getElementById('sdp_'+recId);
+  if(!panel)return;
+  const isOpen=panel.style.display!=='none';
+  panel.style.display=isOpen?'none':'';
+  // 같은 recId의 모든 자세히 버튼 텍스트 동기화
+  document.querySelectorAll(`[data-panel="${recId}"]`).forEach(btn=>{
+    btn.classList.toggle('open',!isOpen);
+    btn.textContent=isOpen?'📋 자세히':'🔼 접기';
+  });
 }
 
 async function toggleScheduleRow(recId, rowIdx){
@@ -2547,7 +2740,9 @@ async function toggleScheduleRow(recId, rowIdx){
   if(!all[idx].subsidySchedule||!all[idx].subsidySchedule[rowIdx])return;
   all[idx].subsidySchedule[rowIdx].done=!all[idx].subsidySchedule[rowIdx].done;
   if(all[idx].subsidySchedule[rowIdx].done)
-    all[idx].subsidySchedule[rowIdx].doneDate=todayStr();
+    all[idx].subsidySchedule[rowIdx].doneDate=todayStr();  // 완료 시 오늘 날짜 기록
+  else
+    all[idx].subsidySchedule[rowIdx].doneDate='';          // 🐛버그수정: 취소 시 초기화
   all[idx].subsidyCheckDone=all[idx].subsidySchedule.every(r=>r.done);
   all[idx].updatedAt=todayStr();
   await DB.updateRecord(all[idx]);_cache.records=null;await DB.getRecords();
@@ -2673,12 +2868,35 @@ async function deleteUser(uid_){
 /* ══════════════════════════════════════════════════
    § U. DOWNLOAD
 ══════════════════════════════════════════════════ */
+// 엑셀 텍스트 셀 강제 지정 헬퍼 (숫자·날짜 자동변환 방지)
+const xT=v=>({t:'s',v:String(v??''),z:'@'});
+
 function getExportHeaders(){return['입력일','담당자','고객명','가입번호','청구계정번호','휴대폰','생년월일','업셀일','요금제변경예정일','기존요금제','업셀요금제','업셀금액','선택약정','대납여부','요금시뮬레이터','TNPS10점안내','응대메모작성','대납시작일','대납예정일','대납예상금액','대납상태','메모']}
-function getExportRows(){return getVisibleRecords().map(r=>[r.date,r.agent,r.customer,r.subNo,r.billNo||'',r.phone,r.birth,r.activateDate,r.planChangeDate,r.oldPlan,r.newPlan,r.upsellAmt,r.contract,r.subsidy,r.chkSimulator?'✅':'',r.chkTnps?'✅':'',r.chkMemo?'✅':'',r.subsidyStartDate,r.subsidyEndDate,r.subsidyAmt,r.subsidyStatus,r.memo])}
+function getExportRows(){
+  return getVisibleRecords().map(r=>[
+    xT(r.date),            // 0 입력일 — 날짜 텍스트
+    r.agent,               // 1 담당자
+    r.customer,            // 2 고객명
+    xT(r.subNo),           // 3 가입번호 — 텍스트
+    xT(r.billNo||''),      // 4 청구계정번호 — 텍스트
+    xT(r.phone||''),       // 5 휴대폰 — 텍스트
+    xT(r.birth||''),       // 6 생년월일 — 텍스트
+    xT(r.activateDate||''),// 7 업셀일 — 날짜 텍스트
+    xT(r.planChangeDate||''),// 8 요금제변경예정일 — 날짜 텍스트
+    r.oldPlan,r.newPlan,r.upsellAmt,
+    r.contract,r.subsidy,
+    r.chkSimulator?'✅':'',r.chkTnps?'✅':'',r.chkMemo?'✅':'',
+    xT(r.subsidyStartDate||''), // 17 대납시작일 — 날짜 텍스트
+    xT(r.subsidyEndDate||''),   // 18 대납예정일 — 날짜 텍스트
+    r.subsidyAmt,r.subsidyStatus,r.memo
+  ]);
+}
 function downloadCSV(){
   if(!getVisibleRecords().length){toast('저장된 데이터가 없습니다','err');return}
   const BOM='\uFEFF';
-  const csv=BOM+[getExportHeaders(),...getExportRows()].map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  // CSV는 cell object에서 v 값 추출 후 따옴표 처리
+  const toVal=c=>(c&&typeof c==='object'&&'v'in c)?c.v:c;
+  const csv=BOM+[getExportHeaders(),...getExportRows()].map(row=>row.map(c=>`"${String(toVal(c)??'').replace(/"/g,'""')}"`).join(',')).join('\n');
   dl(new Blob([csv],{type:'text/csv;charset=utf-8;'}),`업셀실적_${todayStr()}.csv`);
   toast('📥 CSV 다운로드 완료','ok');
 }
@@ -2690,6 +2908,89 @@ function downloadExcel(){
   XLSX.writeFile(wb,`업셀실적_${todayStr()}.xlsx`);toast('📥 Excel 다운로드 완료','ok');
 }
 function dl(blob,name){const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:name});document.body.appendChild(a);a.click();document.body.removeChild(a)}
+
+/* ── 대납 현황 Excel 다운로드 ─────────────────────────────
+   선택 월 기준 필터링 / 빈칸이면 전체
+   컬럼: 담당자·고객명·청구계정번호·업셀일·기존요금제·업셀요금제·업셀금액
+         대납 합계금액 / 누적 대납예정금액(청구계정별) /
+         현재까지 누적 대납금액 / 선택월(또는 당월) 대납금액
+─────────────────────────────────────────────────────── */
+function downloadSubsidyExcel(){
+  const today=todayStr();
+  // 선택된 다운로드 월 (없으면 당월)
+  const dlMonth=document.getElementById('subsidyDlMonth')?.value||today.substring(0,7);
+  const [dlY,dlM]=dlMonth.split('-');
+  const monthLabel=`${dlY}년 ${parseInt(dlM)}월`;
+
+  let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
+  if(!recs.length){toast('대납 있음 데이터가 없습니다','err');return}
+
+  // 스케줄 보정
+  recs=recs.map(r=>{
+    const sched=r.subsidySchedule&&r.subsidySchedule.length
+      ?r.subsidySchedule
+      :calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
+    return{...r,sched};
+  });
+
+  // 선택 월에 해당하는 차수가 있는 건만 필터
+  recs=recs.filter(r=>r.sched.some(row=>{
+    const s=row.periodStart.substring(0,7);
+    const e=row.periodEnd.substring(0,7);
+    return s<=dlMonth&&e>=dlMonth;
+  }));
+
+  if(!recs.length){toast(`${monthLabel}에 해당하는 대납 데이터가 없습니다`,'err');return}
+
+  // 청구계정번호별 누적 대납예정금액 (동일 계정 여러 건 합산)
+  const billTotals={};
+  recs.forEach(r=>{
+    const tot=r.sched.reduce((s,row)=>s+row.amt,0);
+    const key=r.billNo||'—';
+    billTotals[key]=(billTotals[key]||0)+tot;
+  });
+
+  const headers=[
+    '담당자','고객명','청구계정번호','업셀일','기존요금제(VAT포함)','업셀요금제(VAT포함)','업셀금액(공급가)',
+    '대납 합계금액',
+    '누적 대납예정금액\n(청구계정 전체)',
+    '현재까지 누적 대납금액\n(완료 처리 합계)',
+    `${monthLabel} 대납금액`,
+    `${monthLabel} 완료여부`
+  ];
+
+  const rows=recs.map(r=>{
+    const sched=r.sched;
+    const totalAmt=sched.reduce((s,row)=>s+row.amt,0);
+    const cumExpected=billTotals[r.billNo||'—']||totalAmt;
+    const cumDone=sched.filter(row=>row.done).reduce((s,row)=>s+row.amt,0);
+
+    // 선택월 해당 차수들
+    const monthRows=sched.filter(row=>{
+      const s=row.periodStart.substring(0,7);
+      const e=row.periodEnd.substring(0,7);
+      return s<=dlMonth&&e>=dlMonth;
+    });
+    const monthAmt=monthRows.reduce((s,row)=>s+row.amt,0);
+    const monthDone=monthRows.length>0&&monthRows.every(row=>row.done)?'완료':'미완료';
+
+    return[
+      r.agent||'',r.customer||'',
+      xT(r.billNo||''),
+      xT(r.activateDate||''),
+      r.oldPlan||0,r.newPlan||0,r.upsellAmt||0,
+      totalAmt,cumExpected,cumDone,monthAmt,monthDone
+    ];
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+  ws['!cols']=[10,12,16,10,14,14,14,14,18,18,12,10].map(w=>({wch:w}));
+  ws['!rows']=[{hpt:30}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,`대납현황_${dlMonth}`);
+  XLSX.writeFile(wb,`대납현황_${dlMonth}.xlsx`);
+  toast(`📥 ${monthLabel} 대납 현황 다운로드 완료`,'ok');
+}
 async function confirmClear(){
   if(!canAccessRole('admin')){toast('권한이 없습니다','err');return}
   if(!confirm('⚠️ 모든 실적 데이터를 삭제합니다. 계속하시겠습니까?'))return;
