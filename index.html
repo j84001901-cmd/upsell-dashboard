@@ -1588,7 +1588,7 @@ function calcSubsidySchedule(oVAT, nVAT, contract, startDateStr){
   if(!oVAT||!nVAT||!startDateStr) return [];
   const monthly = calcSubsidyMonthly(oVAT, nVAT, contract); // ← 대납 전용 금액
   if(!monthly) return [];
-  const dailyRate = monthly / 30; // 일 업셀금액
+  // dailyRate는 월마다 해당 월 실제 일수로 계산 (루프 안에서 처리)
 
   const start = new Date(startDateStr);
   const endDate = new Date(start);
@@ -1605,6 +1605,7 @@ function calcSubsidySchedule(oVAT, nVAT, contract, startDateStr){
     const periodEnd = monthEnd < endDate ? monthEnd : endDate;
 
     const days = Math.round((periodEnd - cur) / (1000*60*60*24)) + 1;
+    const dailyRate = monthly / lastDay; // 해당 월 실제 일수 기준 (31일이면 ÷31)
     const amt = Math.round(dailyRate * days);
     const deadline = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
     const periodStart = `${y}-${String(m).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
@@ -2792,10 +2793,13 @@ function renderSubsidyCheck(){
   // 대납 있음 + 스케줄 재계산
   let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
   recs=recs.map(r=>{
-    const schedule=r.subsidySchedule&&r.subsidySchedule.length
-      ? r.subsidySchedule
-      : calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
-    return {...r,schedule};
+    // 항상 최신 공식으로 금액 재계산 (기존 done/doneDate 상태는 보존)
+    const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
+    const schedule=fresh.map((row,i)=>{
+      const stored=r.subsidySchedule?.[i];
+      return{...row, done:stored?.done||false, doneDate:stored?.doneDate||''};
+    });
+    return{...r,schedule};
   });
 
   // 담당자·고객명 필터
@@ -3142,11 +3146,13 @@ function downloadSubsidyExcel(){
   let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
   if(!recs.length){toast('대납 있음 데이터가 없습니다','err');return}
 
-  // 스케줄 보정
+  // 항상 최신 공식으로 금액 재계산 (done/doneDate 상태 보존)
   recs=recs.map(r=>{
-    const sched=r.subsidySchedule&&r.subsidySchedule.length
-      ?r.subsidySchedule
-      :calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
+    const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
+    const sched=fresh.map((row,i)=>{
+      const stored=r.subsidySchedule?.[i];
+      return{...row, done:stored?.done||false, doneDate:stored?.doneDate||''};
+    });
     return{...r,sched};
   });
 
