@@ -1551,6 +1551,27 @@ function calcUpsell(oVAT,nVAT,contract){
   return base;
 }
 
+/* ── 대납 월 기준 금액 ────────────────────────────────────
+   대납 목적: 고객 실납부액이 0이 되도록 보전
+   ※ calcUpsell(공급가 기준)과 별도 — 본사 인센티브 인정용과 다름
+
+   선택약정 기가입/신규가입:
+     고객 실납부 = 요금제 × 0.75 (25% 할인)
+     → 대납 = (신규VAT - 기존VAT) × 0.75
+
+   선택약정 미가입:
+     고객 실납부 = 요금제 정가 (할인 없음)
+     → 대납 = 신규VAT - 기존VAT
+────────────────────────────────────────────────────────── */
+function calcSubsidyMonthly(oVAT,nVAT,contract){
+  if(!oVAT||!nVAT)return null;
+  const diff=nVAT-oVAT;   // VAT 포함 차액
+  if(contract==='기가입'||contract==='신규가입'){
+    return Math.round(diff*0.75);   // 선택약정 25% 할인 반영
+  }
+  return Math.round(diff);          // 미가입: 정가 전액
+}
+
 /* ── 대납 월별 스케줄 계산 ──
    규칙:
    - 총 94일치 (시작일 ~ 시작일+93)
@@ -1565,7 +1586,7 @@ function getMonthLastDay(year, month){ // month: 1-12
 }
 function calcSubsidySchedule(oVAT, nVAT, contract, startDateStr){
   if(!oVAT||!nVAT||!startDateStr) return [];
-  const monthly = calcUpsell(oVAT, nVAT, contract);
+  const monthly = calcSubsidyMonthly(oVAT, nVAT, contract); // ← 대납 전용 금액
   if(!monthly) return [];
   const dailyRate = monthly / 30; // 일 업셀금액
 
@@ -1609,7 +1630,7 @@ function calcUpsellRaw(oVAT,nVAT){
 }
 function calcSubsidyAmt(oVAT,nVAT,startDate,endDate,contract){
   if(!oVAT||!nVAT||!startDate||!endDate)return null;
-  const monthly=calcUpsell(oVAT,nVAT,contract);
+  const monthly=calcSubsidyMonthly(oVAT,nVAT,contract); // ← 대납 전용 금액
   if(monthly===null)return null;
   const days=diffDays(startDate,endDate);
   if(days===null||days<0)return null;
@@ -1938,7 +1959,9 @@ function updateCalcDisplay(){
     const oSupply=Math.round(o/1.1).toLocaleString();
     const nSupply=Math.round(n/1.1).toLocaleString();
     if(contract==='기가입'||contract==='신규가입'){
-      bEl.textContent=`공급가 ${oSupply}원 → ${nSupply}원 | 선택약정 25% 할인 적용 (×0.75)`;
+      bEl.textContent=(contract==='기가입'||contract==='신규가입')
+        ?`공급가 ${oSupply}원 → ${nSupply}원 | 선택약정 25% 할인 적용 (×0.75)`
+        :`VAT포함 ${oVAT}원 → ${nVAT}원 | 선택약정 미가입 → VAT포함 금액 기준 대납`;
     }else{
       bEl.textContent=`공급가 ${oSupply}원 → ${nSupply}원`;
     }
