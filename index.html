@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>맞춤제안 업셀 운영 대시보드 v3</title>
+<title>맞춤제안 업셀 운영 대시보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet"/>
@@ -608,6 +608,47 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
 .vt-btn{padding:5px 13px;border:none;background:transparent;border-radius:calc(var(--r-xl) - 3px);font-size:12px;font-weight:700;color:var(--ink-3);cursor:pointer;transition:all var(--transition);white-space:nowrap}
 .vt-btn.active{background:var(--brand);color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .vt-btn:hover:not(.active){background:var(--brand-dim);color:var(--brand-text)}
+/* ══════════════════════════════════════════════════
+   § 근태 관리 스타일
+══════════════════════════════════════════════════ */
+/* 출근 체크 모달 */
+.att-modal-wrap{position:fixed;inset:0;background:rgba(15,23,42,.7);backdrop-filter:blur(6px);z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+.att-modal{background:var(--surface);border-radius:20px;padding:32px 28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);display:flex;flex-direction:column;align-items:center;gap:16px}
+.att-modal-title{font-size:20px;font-weight:900;color:var(--ink-1);text-align:center}
+.att-modal-sub{font-size:12px;color:var(--ink-3);text-align:center;line-height:1.6;margin-top:-8px}
+.att-video-wrap{width:100%;aspect-ratio:4/3;background:#000;border-radius:12px;overflow:hidden;position:relative}
+.att-video{width:100%;height:100%;object-fit:cover;border-radius:12px}
+.att-preview{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:none}
+.att-btn-row{display:flex;gap:10px;width:100%}
+.att-btn{flex:1;padding:12px;border-radius:var(--r-lg);border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all var(--transition)}
+.att-btn-capture{background:var(--brand);color:#fff}
+.att-btn-capture:hover{background:#0284C7}
+.att-btn-retake{background:var(--surface-2);color:var(--ink-2);border:1.5px solid var(--border)}
+.att-btn-submit{background:var(--green);color:#fff}
+.att-btn-submit:hover{opacity:.9}
+.att-btn-skip{background:transparent;color:var(--ink-4);font-size:11px;border:1px solid var(--border)}
+.att-status{font-size:12px;color:var(--ink-3);text-align:center}
+/* 퇴근 버튼 */
+.btn-clockout{padding:6px 14px;border:none;border-radius:99px;background:linear-gradient(135deg,var(--red),#F87171);color:#fff;font-size:12px;font-weight:800;cursor:pointer;display:none;align-items:center;gap:5px;white-space:nowrap;transition:all var(--transition);box-shadow:0 2px 8px rgba(239,68,68,.3)}
+.btn-clockout:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,68,68,.4)}
+.btn-clockin-now{padding:5px 12px;border:1.5px solid var(--green);border-radius:99px;background:var(--green-dim);color:var(--green-text);font-size:11px;font-weight:700;cursor:pointer;display:none}
+/* 현재 근무 중 위젯 */
+.worker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:16px}
+.worker-card{background:linear-gradient(135deg,var(--surface-2),var(--surface));border:1.5px solid var(--green);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.worker-card-name{font-size:14px;font-weight:800;color:var(--ink-1)}
+.worker-card-time{font-size:11px;color:var(--green-text);font-weight:700}
+.worker-card-dur{font-size:11px;color:var(--ink-3)}
+.worker-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite;display:inline-block;margin-right:4px}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.4}}
+/* 근태 섹션 테이블 */
+.att-photo-thumb{width:56px;height:42px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)}
+.att-work-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.att-work-done{background:var(--green-dim);color:var(--green-text)}
+.att-work-going{background:var(--brand-dim);color:var(--brand-text)}
+/* 사진 확대 모달 */
+.photo-zoom-wrap{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.photo-zoom-img{max-width:90vw;max-height:90vh;border-radius:12px}
+@media(max-width:430px){.att-modal{padding:22px 16px}.worker-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -620,7 +661,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <img id="loginLogoImg" class="login-logo-img" src="" alt="로고" style="display:none;max-height:72px;max-width:220px;object-fit:contain;margin:0 auto"/>
       <div id="loginLogoFallback" class="login-logo-fallback">
         <div class="login-logo-icon">📊</div>
-        <div class="login-logo-text"><div class="l1">맞춤제안팀</div><div class="l2">Upsell Dashboard v3</div></div>
+        <div class="login-logo-text"><div class="l1">맞춤제안팀</div><div class="l2">Upsell Dashboard</div></div>
       </div>
     </div>
     <div class="login-title">로그인</div>
@@ -702,6 +743,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <div class="sb-nav-group-label" data-role="admin">관리</div>
       <div class="sb-nav-item" data-sec="accounts" data-role="admin" onclick="goSection('accounts',this)"><span class="nav-ic">👥</span> 계정 관리</div>
       <div class="sb-nav-item" data-sec="manage" data-role="admin" onclick="goSection('manage',this)"><span class="nav-ic">⚙️</span> 데이터 관리</div>
+      <div class="sb-nav-item" data-sec="attendance" data-role="admin" onclick="goSection('attendance',this)"><span class="nav-ic">⏰</span> 근태 관리</div>
     </nav>
     <div class="sb-footer"><button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="doLogout()">🚪 로그아웃</button></div>
   </aside>
@@ -712,6 +754,8 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
     <div><div class="tb-page-title" id="tbTitle">대시보드</div></div>
     <div class="tb-right">
       <div class="date-pill">📅 <span id="topbarDate"></span></div>
+      <!-- 출근 중일 때 퇴근 버튼 -->
+      <button class="btn-clockout" id="clockOutBtn" onclick="confirmClockOut()">🚪 퇴근</button>
       <!-- 알림 센터 -->
       <div class="notif-wrap">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotif()" title="알림">🔔<div class="notif-dot" id="notifDot"></div></button>
@@ -753,6 +797,14 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       </div>
       <!-- 알림 요약 카드 -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px" id="alertSummaryGrid"></div>
+      <!-- 오늘 근무 현황 (관리자 전용) -->
+      <div class="card" id="dashWorkersCard">
+        <div class="card-header">
+          <div class="card-header-left"><span class="worker-dot"></span><span class="card-title">오늘 근무 현황</span><span class="chip" id="dashWorkerCount">—</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="goSection('attendance',document.querySelector('[data-sec=attendance]'))">전체 보기 →</button>
+        </div>
+        <div id="dashWorkersGrid" style="max-height:220px;overflow-y:auto"></div>
+      </div>
       <div class="card">
         <div class="card-header"><div class="card-header-left"><span>🏅</span><span class="card-title">TOP 순위</span></div><button class="btn btn-ghost btn-sm" onclick="goSection('ranking',document.querySelector('[data-sec=ranking]'))">전체 보기 →</button></div>
         <div style="padding:20px"><div class="rank-grid" id="dashRankGrid"></div></div>
@@ -1103,8 +1155,77 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <div class="privacy"><span>🔒</span><span>본 페이지는 내부 실적 관리용으로만 사용하며, 입력된 개인정보는 외부에 공유하거나 무단 저장/배포하지 않습니다.</span></div>
     </section>
 
+    <!-- § 근태 관리 -->
+    <section class="section" id="sec-attendance">
+      <div class="sec-header">
+        <div><h2>근태 관리</h2><p>팀원 출퇴근 현황 · 사진 인증</p></div>
+        <div class="sec-actions">
+          <button class="btn btn-success btn-sm" onclick="downloadAttendanceExcel()">⬇ 근태 Excel</button>
+        </div>
+      </div>
+      <!-- 현재 근무 중 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-left"><span class="worker-dot"></span><span class="card-title">현재 근무 중</span><span class="chip" id="workerCount">0명</span></div>
+          <button class="btn btn-ghost btn-sm" onclick="renderAttendanceSection()">🔄 새로고침</button>
+        </div>
+        <div class="worker-grid" id="currentWorkersGrid">
+          <div style="grid-column:1/-1;padding:16px;text-align:center;color:var(--ink-4);font-size:13px">로딩 중…</div>
+        </div>
+      </div>
+      <!-- 근태 기록 -->
+      <div class="filter-bar">
+        <div class="filter-group"><div class="filter-lbl">조회 날짜</div><input type="date" class="fi" id="att_date"/></div>
+        <div class="filter-group"><div class="filter-lbl">담당자명</div><input class="fi" id="att_agent" type="text" placeholder="검색…"/></div>
+        <div class="filter-group"><div class="filter-lbl">상태</div>
+          <select class="fi" id="att_status">
+            <option value="">전체</option><option value="working">근무 중</option><option value="done">퇴근 완료</option>
+          </select>
+        </div>
+        <div class="filter-actions"><button class="btn btn-primary btn-sm" onclick="renderAttendanceSection()">조회</button><button class="btn btn-ghost btn-sm" onclick="clearAttFilters()">초기화</button></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-header-left"><span>📋</span><span class="card-title">근태 기록</span><span class="chip" id="attCount">0건</span></div></div>
+        <div class="tbl-wrap">
+          <table class="tbl" style="min-width:860px"><thead><tr>
+            <th>날짜</th><th>담당자</th><th>소속팀</th><th>출근시간</th><th>퇴근시간</th><th>근무시간</th><th>상태</th><th class="ctr">출근 사진</th>
+          </tr></thead><tbody id="attTbody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
   </main>
 </div><!-- /appShell -->
+
+<!-- 출근 체크 모달 -->
+<div id="attModalWrap" class="att-modal-wrap" style="display:none">
+  <div class="att-modal">
+    <div style="font-size:36px">📸</div>
+    <div class="att-modal-title">출근 체크</div>
+    <div class="att-modal-sub">모니터에 업무 화면이 보이도록<br>사진을 촬영해 주세요</div>
+    <!-- 카메라 -->
+    <div class="att-video-wrap" id="attVideoWrap">
+      <video class="att-video" id="attVideo" autoplay playsinline muted></video>
+    </div>
+    <!-- 촬영 미리보기 -->
+    <img class="att-preview" id="attPreview" alt="촬영 미리보기"/>
+    <canvas id="attCanvas" style="display:none"></canvas>
+    <div class="att-status" id="attStatus">카메라를 준비 중입니다…</div>
+    <div class="att-btn-row" id="attBtnRow">
+      <button class="att-btn att-btn-capture" id="attCaptureBtn" onclick="captureAttPhoto()" style="display:none">📸 촬영</button>
+    </div>
+    <div class="att-btn-row" id="attBtnRow2" style="display:none">
+      <button class="att-btn att-btn-retake" onclick="retakeAttPhoto()">🔄 다시 찍기</button>
+      <button class="att-btn att-btn-submit" onclick="submitClockIn()">✅ 출근 완료</button>
+    </div>
+    <button class="att-btn att-btn-skip" id="attSkipBtn" onclick="submitClockIn(true)" style="margin-top:4px;display:none">사진 없이 출근 체크</button>
+  </div>
+</div>
+
+<!-- 사진 확대 모달 -->
+<div id="photoZoomWrap" class="photo-zoom-wrap" style="display:none" onclick="closePhotoZoom()">
+  <img class="photo-zoom-img" id="photoZoomImg" alt="출근 사진"/>
+</div>
 
 <div id="toasts"></div>
 
@@ -1284,6 +1405,55 @@ const DB = {
   async deleteOffline(id){
     await sbFetch('offline_records?id=eq.' + id, { method:'DELETE', prefer:'return=minimal' });
     _cache.offline = null;
+  },
+
+  // ── ATTENDANCE ──
+  // ✅ 별도 테이블 불필요 — 기존 settings 테이블 재활용
+  //    키 형식: att_{YYYY-MM-DD}_{userId}
+  //    값: JSON.stringify(attendance 객체)
+
+  // 날짜별 전체 조회 (date=null 이면 전체)
+  async getAttendanceByDate(date){
+    const pattern = date ? `att_${date}_*` : 'att_*';
+    const rows = await sbFetch(`settings?key=like.${pattern}&order=key.asc`) || [];
+    return rows
+      .map(r=>{ try{ return JSON.parse(r.value); }catch(e){ return null; } })
+      .filter(Boolean)
+      .sort((a,b)=>{ // 날짜 내림차순, 같은 날짜면 clock_in 오름차순
+        const dc=(b.date||'').localeCompare(a.date||'');
+        return dc!==0 ? dc : (a.clock_in||'').localeCompare(b.clock_in||'');
+      });
+  },
+
+  // 특정 사용자의 오늘 출근 기록 조회
+  async getTodayAttendance(userId, date){
+    const key = `att_${date}_${userId}`;
+    const rows = await sbFetch(`settings?key=eq.${key}`) || [];
+    return rows.map(r=>{ try{ return JSON.parse(r.value); }catch(e){ return null; } }).filter(Boolean);
+  },
+
+  // 출근 저장 (upsert)
+  async saveAttendance(obj){
+    const key = `att_${obj.date}_${obj.user_id}`;
+    obj.id = key; // id = settings key
+    await sbFetch('settings', {
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify({ key, value: JSON.stringify(obj) })
+    });
+  },
+
+  // 퇴근/수정 (기존 레코드에 patch 병합)
+  async updateAttendance(id, patch){
+    // id = settings key (att_{date}_{userId})
+    const rows = await sbFetch(`settings?key=eq.${id}`) || [];
+    if(!rows.length) return;
+    const current = JSON.parse(rows[0].value);
+    const updated = {...current, ...patch};
+    await sbFetch(`settings?key=eq.${id}`, {
+      method:'PATCH',
+      body:JSON.stringify({ value: JSON.stringify(updated) })
+    });
   }
 };
 
@@ -1669,6 +1839,8 @@ async function enterApp(){
   updateAlertBadges();
   updateMonthPickerUI();   // 월 피커 초기 라벨 설정
   renderDashboard();
+  // 출근 체크 (member 역할만)
+  setTimeout(()=>checkAttendanceOnLogin(), 800);
 }
 function canAccessRole(required){
   const order={member:0,admin:1,super_admin:2};
@@ -1687,9 +1859,9 @@ function doLogout(){
 /* ══════════════════════════════════════════════════
    § I. SECTION NAVIGATION
 ══════════════════════════════════════════════════ */
-const SEC_TITLES={dashboard:'대시보드',form:'실적 입력',list:'실적 리스트',ranking:'담당자 순위',plancheck:'요금제 변경일 체크',subsidycheck:'대납 진행 체크',accounts:'계정 관리',manage:'데이터 관리'};
+const SEC_TITLES={dashboard:'대시보드',form:'실적 입력',list:'실적 리스트',ranking:'담당자 순위',plancheck:'요금제 변경일 체크',subsidycheck:'대납 진행 체크',accounts:'계정 관리',manage:'데이터 관리',attendance:'근태 관리'};
 function goSection(key,navEl){
-  if((key==='accounts'||key==='manage')&&!canAccessRole('admin')){toast('접근 권한이 없습니다.','err');return}
+  if((key==='accounts'||key==='manage'||key==='attendance')&&!canAccessRole('admin')){toast('접근 권한이 없습니다.','err');return}
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+key)?.classList.add('active');
   document.querySelectorAll('.sb-nav-item').forEach(n=>n.classList.remove('active'));
@@ -1702,6 +1874,7 @@ function goSection(key,navEl){
   if(key==='plancheck')renderPlanCheck();
   if(key==='subsidycheck')renderSubsidyCheck();
   if(key==='accounts')renderAccounts();
+  if(key==='attendance')renderAttendanceSection();
 }
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('sbOverlay').classList.toggle('show')}
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sbOverlay').classList.remove('show')}
@@ -2115,7 +2288,8 @@ function renderDashboard(){
   else{document.getElementById('kpi-top').textContent='—';document.getElementById('kpi-top-sub').textContent='건수 기준'}
   renderRankCards('dashRankGrid',agg.slice(0,3));
   renderSumTable('dashSumTbody',agg);
-  renderGuinnessRecords();        // 기네스 기록 (전체 기간 기준)
+  renderGuinnessRecords();
+  renderDashboardWorkers();   // 오늘 근무 현황 (관리자 전용)
   updateAlertBadges();
 }
 
@@ -2249,7 +2423,21 @@ async function renderRanking(){
   const teamOfflineTotal = Object.values(offlineMap).reduce((s,cnt)=>s+cnt, 0);
   // 팀 전체 합산 건수 → 이 기준으로 그레이드 단가 결정
   const teamTotalCnt = teamCustomTotal + teamOfflineTotal;
-  const teamGrade = getGrade(teamTotalCnt);
+
+  // ── 월 마감 예상 건수 계산 ──
+  // 이번달(월별 뷰) 진행 중인 경우만 예상치 적용, 지난달/연간/전체는 실제 건수
+  function calcProjectedCnt(actual){
+    if(_viewMode!=='month') return actual;
+    const now=new Date();
+    const currentYM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    if(_selectedMonth!==currentYM) return actual;   // 지난달 → 실제 건수
+    const dayOfMonth=now.getDate();
+    const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    if(!dayOfMonth) return actual;
+    return Math.round(actual*daysInMonth/dayOfMonth);
+  }
+  const projectedTeamCnt = calcProjectedCnt(teamTotalCnt);  // 마감 예상 건수
+  const teamGrade = getGrade(projectedTeamCnt);              // 예상 건수 기준 그레이드
 
   /* ── 4. 개인별 집계 (인센티브 대상: 맞춤제안 담당자만) ── */
   // 맞춤제안 실적 있는 담당자만 인센티브 집계 표시
@@ -2282,7 +2470,7 @@ async function renderRanking(){
   );
 
   renderRankCards('fullRankGrid', aggWithIncen);
-  renderIncentiveTable('rankSumTbody', aggWithIncen, teamTotalCnt, teamGrade);
+  renderIncentiveTable('rankSumTbody', aggWithIncen, teamTotalCnt, teamGrade, projectedTeamCnt);
   renderOfflineList();
 }
 function renderRankCards(id,agg){
@@ -2314,11 +2502,12 @@ function renderSumTable(tbodyId,agg){
   tb.innerHTML=agg.map((p,i)=>`<tr><td class="fw">${i+1}위</td><td class="fw">${esc(p.name)}</td><td class="num">${p.count}건</td><td class="num">${fmt(p.total)}</td><td class="num">${fmt(p.total/p.count)}</td></tr>`).join('');
 }
 
-function renderIncentiveTable(tbodyId, agg, teamTotalCnt=0, teamGrade=null){
+function renderIncentiveTable(tbodyId, agg, teamTotalCnt=0, teamGrade=null, projectedTeamCnt=null){
   const tb=document.getElementById(tbodyId);
   if(!agg.length){tb.innerHTML=`<tr><td colspan="10" class="tbl-empty">📭 데이터가 없습니다</td></tr>`;return}
 
   const g = teamGrade || getGrade(0);
+  const isProjected = projectedTeamCnt!==null && projectedTeamCnt!==teamTotalCnt;
 
   // 합계 행
   const sumCustom  = agg.reduce((s,p)=>s+p.count,0);
@@ -2333,8 +2522,10 @@ function renderIncentiveTable(tbodyId, agg, teamTotalCnt=0, teamGrade=null){
     ? `<span class="grade-badge ${g.cls}">${g.label}</span>`
     : `<span class="grade-badge grade-none">${g.label}</span>`;
 
-  // 팀 전체 기준 안내
-  const teamNote = `<div style="font-size:10px;color:var(--ink-4);margin-top:1px">팀 전체 ${teamTotalCnt}건 기준</div>`;
+  // 팀 전체 기준 안내 (예상 건수 적용 시 명시)
+  const teamNote = isProjected
+    ? `<div style="font-size:10px;color:var(--ink-4);margin-top:1px">실적 ${teamTotalCnt}건 → <span style="color:var(--brand-text);font-weight:700">예상 ${projectedTeamCnt}건</span> 기준</div>`
+    : `<div style="font-size:10px;color:var(--ink-4);margin-top:1px">팀 전체 ${teamTotalCnt}건 기준</div>`;
 
   tb.innerHTML = agg.map((p,i)=>{
     const upsellNote = p.upsellIncen>0
@@ -2361,7 +2552,10 @@ function renderIncentiveTable(tbodyId, agg, teamTotalCnt=0, teamGrade=null){
     <td class="num" style="font-weight:700">${sumCustom}건</td>
     <td class="num" style="color:var(--ink-3);font-weight:700">${sumOffline}건</td>
     <td class="num" style="font-weight:800;background:var(--brand-dim)">${teamTotalCnt}건</td>
-    <td class="ctr"><span style="font-size:11px;color:var(--brand-text);font-weight:700">팀 전체 기준</span></td>
+    <td class="ctr">
+      <span style="font-size:11px;color:var(--brand-text);font-weight:700">팀 전체 기준</span>
+      ${isProjected?`<div style="font-size:10px;color:var(--brand-text);font-weight:700">예상 ${projectedTeamCnt}건</div>`:''}
+    </td>
     <td></td>
     <td class="num" style="color:var(--amber-text);font-weight:700">${fmt(sumGrade)}</td>
     <td class="num" style="color:var(--green);font-weight:700">${fmt(sumUpsell)}</td>
@@ -3001,6 +3195,317 @@ async function confirmClear(){
   _cache.records=null;_cache.offline=null;
   await DB.getRecords();
   updateNavBadge();updateAlertBadges();renderDashboard();renderList();renderRanking();renderPlanCheck();renderSubsidyCheck();toast('전체 데이터가 초기화되었습니다','ok');
+}
+
+/* ══════════════════════════════════════════════════
+   § AA. 근태 관리 (출퇴근 체크)
+══════════════════════════════════════════════════ */
+let _myAttendance = null;   // 오늘 현재 사용자 근태 레코드
+let _attCheckDone = false;  // 세션 내 중복 체크 방지
+let _attStream    = null;   // 카메라 스트림
+let _attPhoto     = null;   // 촬영된 사진 base64
+
+// ── 로그인 후 출근 체크 ──────────────────────────
+async function checkAttendanceOnLogin(){
+  if(!currentUser||currentUser.role!=='member') return;
+  if(_attCheckDone) return;
+  _attCheckDone = true;
+  const today = todayStr();
+  try{
+    const rows = await DB.getTodayAttendance(currentUser.id, today);
+    if(rows.length > 0){
+      _myAttendance = rows[0];
+      if(!_myAttendance.clock_out) showClockOutBtn();
+    } else {
+      openAttendanceModal();
+    }
+  } catch(e){
+    console.warn('출근 체크 오류:', e);
+  }
+}
+
+// 날짜 바뀌면 재체크 (탭 포커스 시)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible'&&currentUser?.role==='member'){
+    const today=todayStr();
+    if(_myAttendance&&_myAttendance.date!==today){
+      _attCheckDone=false;_myAttendance=null;
+      hideClockOutBtn();
+      checkAttendanceOnLogin();
+    }
+  }
+});
+
+// ── 출근 모달 ──────────────────────────────────
+function openAttendanceModal(){
+  _attPhoto = null;
+  document.getElementById('attModalWrap').style.display='flex';
+  document.getElementById('attPreview').style.display='none';
+  document.getElementById('attVideoWrap').style.display='block';
+  document.getElementById('attBtnRow2').style.display='none';
+  document.getElementById('attSkipBtn').style.display='none';
+  document.getElementById('attStatus').textContent='카메라를 시작합니다…';
+  document.getElementById('attCaptureBtn').style.display='none';
+  startCamera();
+}
+
+async function startCamera(){
+  try{
+    const constraints={video:{facingMode:{ideal:'environment'},width:{ideal:640},height:{ideal:480}}};
+    _attStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const video = document.getElementById('attVideo');
+    video.srcObject = _attStream;
+    await video.play();
+    document.getElementById('attStatus').textContent='모니터 화면이 나오도록 카메라를 조정하세요';
+    document.getElementById('attCaptureBtn').style.display='block';
+    setTimeout(()=>{ document.getElementById('attSkipBtn').style.display='block'; }, 5000);
+  } catch(e){
+    document.getElementById('attStatus').textContent='카메라를 사용할 수 없습니다. 사진 없이 출근 체크합니다.';
+    document.getElementById('attSkipBtn').style.display='block';
+  }
+}
+
+function stopCamera(){
+  if(_attStream){ _attStream.getTracks().forEach(t=>t.stop()); _attStream=null; }
+}
+
+function captureAttPhoto(){
+  const video  = document.getElementById('attVideo');
+  const canvas = document.getElementById('attCanvas');
+  canvas.width  = 480;
+  canvas.height = 360;
+  canvas.getContext('2d').drawImage(video, 0, 0, 480, 360);
+  _attPhoto = canvas.toDataURL('image/jpeg', 0.5); // 압축 저장
+  document.getElementById('attPreview').src = _attPhoto;
+  document.getElementById('attPreview').style.display='block';
+  document.getElementById('attVideoWrap').style.display='none';
+  document.getElementById('attBtnRow2').style.display='flex';
+  document.getElementById('attCaptureBtn').style.display='none';
+  document.getElementById('attSkipBtn').style.display='none';
+  document.getElementById('attStatus').textContent='촬영 완료! 출근 완료 버튼을 눌러주세요.';
+  stopCamera();
+}
+
+function retakeAttPhoto(){
+  _attPhoto = null;
+  document.getElementById('attPreview').style.display='none';
+  document.getElementById('attVideoWrap').style.display='block';
+  document.getElementById('attBtnRow2').style.display='none';
+  document.getElementById('attCaptureBtn').style.display='block';
+  document.getElementById('attStatus').textContent='다시 촬영해주세요';
+  startCamera();
+}
+
+async function submitClockIn(skipPhoto=false){
+  stopCamera();
+  const now   = new Date();
+  const hhmm  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const today = todayStr();
+  const rec = {
+    id: uid(),
+    user_id:    currentUser.id,
+    user_name:  currentUser.name,
+    team:       currentUser.team||'',
+    date:       today,
+    clock_in:   hhmm,
+    clock_out:  null,
+    photo:      (!skipPhoto && _attPhoto) ? _attPhoto : null,
+    work_minutes: null,
+    memo:       '',
+    created_at: today
+  };
+  try{
+    await DB.saveAttendance(rec);
+    _myAttendance = rec;
+    document.getElementById('attModalWrap').style.display='none';
+    showClockOutBtn();
+    toast(`✅ 출근 체크 완료 (${hhmm})`,'ok');
+  } catch(e){
+    console.error(e);
+    toast('출근 체크 저장 실패 — Supabase attendance 테이블을 확인하세요','err');
+    document.getElementById('attModalWrap').style.display='none';
+  }
+  _attPhoto = null;
+}
+
+// ── 퇴근 처리 ──────────────────────────────────
+function showClockOutBtn(){
+  const btn=document.getElementById('clockOutBtn');
+  if(btn){ btn.style.display='flex'; btn.textContent=`🚪 퇴근 (${_myAttendance?.clock_in||''})`; }
+}
+function hideClockOutBtn(){
+  const btn=document.getElementById('clockOutBtn');
+  if(btn) btn.style.display='none';
+}
+
+async function confirmClockOut(){
+  if(!_myAttendance){toast('출근 기록이 없습니다','err');return}
+  if(!confirm('퇴근 처리하시겠습니까?'))return;
+  const now=new Date();
+  const hhmm=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  // 근무시간 계산
+  const [ih,im]=_myAttendance.clock_in.split(':').map(Number);
+  const [oh,om]=hhmm.split(':').map(Number);
+  const workMin=Math.max(0,(oh*60+om)-(ih*60+im));
+  try{
+    await DB.updateAttendance(_myAttendance.id,{clock_out:hhmm,work_minutes:workMin});
+    _myAttendance.clock_out=hhmm; _myAttendance.work_minutes=workMin;
+    hideClockOutBtn();
+    const h=Math.floor(workMin/60),m=workMin%60;
+    toast(`🏠 퇴근 완료 — 근무시간 ${h}시간 ${m}분`,'ok');
+  } catch(e){
+    toast('퇴근 저장 실패','err');
+  }
+}
+
+// ── 근태 관리 섹션 렌더 ────────────────────────
+async function renderAttendanceSection(){
+  if(!canAccessRole('admin'))return;
+  await renderCurrentWorkers();
+  await renderAttendanceTable();
+}
+
+async function renderCurrentWorkers(){
+  const grid=document.getElementById('currentWorkersGrid');
+  const countEl=document.getElementById('workerCount');
+  if(!grid)return;
+  try{
+    const today=todayStr();
+    const rows=await DB.getAttendanceByDate(today);
+    const working=rows.filter(r=>!r.clock_out);
+    countEl.textContent=working.length+'명';
+    if(!working.length){
+      grid.innerHTML='<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--ink-4);font-size:13px">현재 근무 중인 팀원이 없습니다</div>';
+      return;
+    }
+    const now=new Date();
+    grid.innerHTML=working.map(r=>{
+      const [ih,im]=r.clock_in.split(':').map(Number);
+      const dur=Math.max(0,Math.round((now-new Date().setHours(ih,im,0,0))/60000));
+      const h=Math.floor(dur/60),m=dur%60;
+      return`<div class="worker-card">
+        <div style="display:flex;align-items:center;gap:6px"><span class="worker-dot"></span><span class="worker-card-name">${esc(r.user_name||'—')}</span></div>
+        <div class="worker-card-time">출근 ${r.clock_in}</div>
+        <div class="worker-card-dur">${h}시간 ${m}분째 근무 중</div>
+        ${r.team?`<div style="font-size:10px;color:var(--ink-4)">${esc(r.team)}</div>`:''}
+      </div>`;
+    }).join('');
+  } catch(e){
+    grid.innerHTML='<div style="grid-column:1/-1;padding:16px;text-align:center;color:var(--red);font-size:12px">근태 데이터 불러오기 실패 — 잠시 후 다시 시도해주세요</div>';
+    countEl.textContent='—';
+  }
+}
+
+async function renderAttendanceTable(){
+  const tb=document.getElementById('attTbody');
+  const countEl=document.getElementById('attCount');
+  if(!tb)return;
+  const fDate=document.getElementById('att_date')?.value||'';
+  const fAgent=document.getElementById('att_agent')?.value.trim().toLowerCase()||'';
+  const fStatus=document.getElementById('att_status')?.value||'';
+  try{
+    let rows=await DB.getAttendanceByDate(fDate||null);
+    if(fAgent) rows=rows.filter(r=>(r.user_name||'').toLowerCase().includes(fAgent));
+    if(fStatus==='working') rows=rows.filter(r=>!r.clock_out);
+    if(fStatus==='done')    rows=rows.filter(r=>!!r.clock_out);
+    countEl.textContent=rows.length+'건';
+    if(!rows.length){tb.innerHTML=`<tr><td colspan="8" class="tbl-empty">📭 근태 기록이 없습니다</td></tr>`;return}
+    tb.innerHTML=rows.map(r=>{
+      const h=r.work_minutes!=null?Math.floor(r.work_minutes/60):null;
+      const m=r.work_minutes!=null?r.work_minutes%60:null;
+      const dur=h!=null?`${h}시간 ${m}분`:'—';
+      const statusBadge=r.clock_out
+        ?`<span class="att-work-badge att-work-done">퇴근</span>`
+        :`<span class="att-work-badge att-work-going">근무 중</span>`;
+      const photoHtml=r.photo
+        ?`<img class="att-photo-thumb" src="${r.photo}" onclick="openPhotoZoom('${r.id}')" data-photo="${r.id}" title="클릭하여 확대"/>`
+        :`<span style="color:var(--ink-4);font-size:11px">없음</span>`;
+      return`<tr>
+        <td style="white-space:nowrap">${r.date}</td>
+        <td class="fw">${esc(r.user_name||'—')}</td>
+        <td>${esc(r.team||'—')}</td>
+        <td class="ctr" style="font-weight:700;color:var(--brand)">${r.clock_in||'—'}</td>
+        <td class="ctr" style="font-weight:700;color:var(--red)">${r.clock_out||'—'}</td>
+        <td class="ctr" style="font-weight:700">${dur}</td>
+        <td class="ctr">${statusBadge}</td>
+        <td class="ctr">${photoHtml}</td>
+      </tr>`;
+    }).join('');
+    // photo data를 전역에 임시 저장 (확대용)
+    window._attPhotoMap={};
+    rows.forEach(r=>{ if(r.photo) window._attPhotoMap[r.id]=r.photo; });
+  } catch(e){
+    tb.innerHTML=`<tr><td colspan="8" class="tbl-empty" style="color:var(--red)">데이터 불러오기 실패 — 잠시 후 다시 시도하세요</td></tr>`;
+  }
+}
+
+function openPhotoZoom(id){
+  const photo=window._attPhotoMap?.[id]; if(!photo)return;
+  document.getElementById('photoZoomImg').src=photo;
+  document.getElementById('photoZoomWrap').style.display='flex';
+}
+function closePhotoZoom(){ document.getElementById('photoZoomWrap').style.display='none'; }
+function clearAttFilters(){
+  ['att_agent'].forEach(i=>document.getElementById(i).value='');
+  ['att_date','att_status'].forEach(i=>{const el=document.getElementById(i);if(el)el.value=''});
+  renderAttendanceSection();
+}
+
+// ── 대시보드용 오늘 근무 현황 (관리자) ──────────
+async function renderDashboardWorkers(){
+  const el=document.getElementById('dashWorkersGrid'); if(!el)return;
+  if(!canAccessRole('admin')){el.parentElement.style.display='none';return}
+  try{
+    const today=todayStr();
+    const rows=await DB.getAttendanceByDate(today);
+    const working=rows.filter(r=>!r.clock_out);
+    const done=rows.filter(r=>!!r.clock_out);
+    document.getElementById('dashWorkerCount').textContent=working.length+'명 근무 중';
+    if(!rows.length){el.innerHTML='<div style="padding:12px 16px;font-size:12px;color:var(--ink-4)">오늘 출근 기록 없음</div>';return}
+    const now=new Date();
+    el.innerHTML=[...working,...done].map(r=>{
+      const isWorking=!r.clock_out;
+      const [ih,im]=r.clock_in.split(':').map(Number);
+      const dur=isWorking?Math.max(0,Math.round((now-new Date(now.toDateString()+' '+r.clock_in))/60000)):r.work_minutes||0;
+      const h=Math.floor(dur/60),m=dur%60;
+      return`<div style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border-2)">
+        ${isWorking?'<span class="worker-dot"></span>':'<span style="width:8px;height:8px;border-radius:50%;background:var(--border);display:inline-block"></span>'}
+        <span style="font-size:13px;font-weight:700;flex:1">${esc(r.user_name||'—')}</span>
+        <span style="font-size:11px;color:var(--brand);font-weight:700">${r.clock_in}</span>
+        <span style="font-size:11px;color:var(--ink-4)">→</span>
+        <span style="font-size:11px;color:${isWorking?'var(--ink-4)':'var(--red)'};font-weight:700">${r.clock_out||'근무 중'}</span>
+        <span style="font-size:11px;color:var(--ink-3)">${h}h ${m}m</span>
+      </div>`;
+    }).join('');
+  } catch(e){ el.parentElement.style.display='none'; }
+}
+
+// ── 근태 Excel 다운로드 ─────────────────────────
+async function downloadAttendanceExcel(){
+  try{
+    const fDate=document.getElementById('att_date')?.value||'';
+    const rows=await DB.getAttendanceByDate(fDate||null);
+    if(!rows.length){toast('근태 데이터가 없습니다','err');return}
+    const headers=['날짜','담당자','소속팀','출근시간','퇴근시간','근무시간(분)','근무시간','상태'];
+    const data=rows.map(r=>{
+      const h=r.work_minutes!=null?Math.floor(r.work_minutes/60):null;
+      const m=r.work_minutes!=null?r.work_minutes%60:null;
+      return[
+        xT(r.date||''),r.user_name||'',r.team||'',
+        xT(r.clock_in||''),xT(r.clock_out||''),
+        r.work_minutes||'',
+        h!=null?`${h}시간 ${m}분`:'',
+        r.clock_out?'퇴근완료':'근무중'
+      ];
+    });
+    const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
+    ws['!cols']=[10,10,10,8,8,10,10,8].map(w=>({wch:w}));
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'근태현황');
+    const fname=fDate?`근태현황_${fDate}.xlsx`:`근태현황_${todayStr()}.xlsx`;
+    XLSX.writeFile(wb,fname);
+    toast('📥 근태 현황 다운로드 완료','ok');
+  } catch(e){ toast('다운로드 실패','err'); }
 }
 
 /* ══════════════════════════════════════════════════
