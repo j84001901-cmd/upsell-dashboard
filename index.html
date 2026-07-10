@@ -649,6 +649,20 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
 .photo-zoom-wrap{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .photo-zoom-img{max-width:90vw;max-height:90vh;border-radius:12px}
 @media(max-width:430px){.att-modal{padding:22px 16px}.worker-grid{grid-template-columns:repeat(2,1fr)}}
+/* ── 실적 수정 모달 ── */
+.edit-modal-wrap{position:fixed;inset:0;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);z-index:1500;display:flex;align-items:center;justify-content:center;padding:20px}
+.edit-modal{background:var(--surface);border-radius:20px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.edit-modal-head{display:flex;align-items:center;justify-content:space-between;padding:22px 28px 0;margin-bottom:16px}
+.edit-modal-title{font-size:18px;font-weight:900;color:var(--ink-1)}
+.edit-modal-close{width:32px;height:32px;border-radius:50%;border:none;background:var(--surface-2);color:var(--ink-3);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.edit-modal-body{padding:0 28px 28px;display:flex;flex-direction:column;gap:14px}
+.edit-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.edit-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.edit-field{display:flex;flex-direction:column;gap:5px}
+.edit-field label{font-size:11px;font-weight:700;color:var(--ink-3);letter-spacing:.3px}
+.edit-field .fi{width:100%}
+.edit-chk-row{display:flex;gap:16px;align-items:center;padding:10px 14px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border)}
+.edit-footer{display:flex;gap:10px;padding-top:4px}
 </style>
 </head>
 <body>
@@ -962,7 +976,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
           <table class="tbl" id="listTable"><thead><tr>
             <th>입력일</th><th>담당자</th><th>고객명</th><th>업셀일</th><th>가입번호</th><th>청구계정번호</th><th>휴대폰</th>
             <th style="text-align:right">기존요금제</th><th style="text-align:right">업셀요금제</th><th style="text-align:right">업셀금액</th>
-            <th>선택약정</th><th>대납</th><th class="ctr">시뮬</th><th class="ctr">TNPS</th><th class="ctr">응대메모</th><th>메모</th><th style="width:44px"></th>
+            <th>선택약정</th><th>대납</th><th class="ctr">시뮬</th><th class="ctr">TNPS</th><th class="ctr">응대메모</th><th>메모</th><th style="width:72px" class="ctr">관리</th>
           </tr></thead><tbody id="listTbody"></tbody></table>
         </div>
       </div>
@@ -1225,6 +1239,82 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
 <!-- 사진 확대 모달 -->
 <div id="photoZoomWrap" class="photo-zoom-wrap" style="display:none" onclick="closePhotoZoom()">
   <img class="photo-zoom-img" id="photoZoomImg" alt="출근 사진"/>
+</div>
+
+<!-- 실적 수정 모달 -->
+<div id="editModalWrap" class="edit-modal-wrap" style="display:none" onclick="if(event.target===this)closeEditModal()">
+  <div class="edit-modal">
+    <div class="edit-modal-head">
+      <div class="edit-modal-title">✏️ 실적 수정</div>
+      <button class="edit-modal-close" onclick="closeEditModal()">✕</button>
+    </div>
+    <div class="edit-modal-body">
+      <input type="hidden" id="editRecordId"/>
+      <!-- 기본 정보 -->
+      <div class="edit-row">
+        <div class="edit-field"><label>입력일</label><input class="fi" type="date" id="editDate"/></div>
+        <div class="edit-field"><label>담당자명</label><input class="fi" type="text" id="editAgent" placeholder="담당자명"/></div>
+      </div>
+      <div class="edit-row">
+        <div class="edit-field"><label>고객명</label><input class="fi" type="text" id="editCustomer" placeholder="고객명"/></div>
+        <div class="edit-field"><label>업셀일 (개통일)</label><input class="fi" type="date" id="editActivateDate"/></div>
+      </div>
+      <div class="edit-row">
+        <div class="edit-field"><label>가입번호</label><input class="fi" type="text" id="editSubNo" placeholder="가입번호"/></div>
+        <div class="edit-field"><label>청구계정번호</label><input class="fi" type="text" id="editBillNo" placeholder="청구계정번호"/></div>
+      </div>
+      <div class="edit-row">
+        <div class="edit-field"><label>휴대폰 번호</label><input class="fi" type="text" id="editPhone" placeholder="010-0000-0000"/></div>
+        <div class="edit-field"><label>생년월일</label><input class="fi" type="text" id="editBirth" placeholder="YYYYMMDD"/></div>
+      </div>
+      <!-- 요금제 -->
+      <div class="edit-row">
+        <div class="edit-field"><label>기존 요금제 (VAT포함, 원)</label><input class="fi" type="number" id="editOldPlan" placeholder="예) 69000"/></div>
+        <div class="edit-field"><label>업셀 요금제 (VAT포함, 원)</label><input class="fi" type="number" id="editNewPlan" placeholder="예) 89000"/></div>
+      </div>
+      <!-- 약정·대납 -->
+      <div class="edit-row">
+        <div class="edit-field"><label>선택약정</label>
+          <select class="fi" id="editContract">
+            <option value="">선택</option>
+            <option>기가입</option><option>신규가입</option><option>미가입</option>
+          </select>
+        </div>
+        <div class="edit-field"><label>대납 여부</label>
+          <select class="fi" id="editSubsidy" onchange="toggleEditSubsidyDate()">
+            <option value="">선택</option>
+            <option>대납 있음</option><option>대납 없음</option>
+          </select>
+        </div>
+      </div>
+      <div class="edit-field" id="editSubsidyDateWrap" style="display:none">
+        <label>대납 시작일</label>
+        <input class="fi" type="date" id="editSubsidyStartDate"/>
+      </div>
+      <!-- 체크 항목 -->
+      <div class="edit-chk-row">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="editChkSimulator"/> 요금 시뮬레이터 안내
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="editChkTnps"/> TNPS 10점 안내
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer">
+          <input type="checkbox" id="editChkMemo"/> 응대메모 작성
+        </label>
+      </div>
+      <!-- 메모 -->
+      <div class="edit-field">
+        <label>메모</label>
+        <input class="fi" type="text" id="editMemo" placeholder="메모 (선택)"/>
+      </div>
+      <!-- 버튼 -->
+      <div class="edit-footer">
+        <button class="btn btn-primary" style="flex:1" onclick="submitEditRecord()">💾 저장</button>
+        <button class="btn btn-ghost" onclick="closeEditModal()">취소</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toasts"></div>
@@ -2665,7 +2755,7 @@ function renderList(){
   });
   document.getElementById('listCount').textContent=recs.length+'건';
   const tb=document.getElementById('listTbody');
-  if(!recs.length){tb.innerHTML=`<tr><td colspan="13" class="tbl-empty">🔍 조건에 맞는 데이터가 없습니다</td></tr>`;return}
+  if(!recs.length){tb.innerHTML=`<tr><td colspan="17" class="tbl-empty">🔍 조건에 맞는 데이터가 없습니다</td></tr>`;return}
   tb.innerHTML=recs.map(r=>`<tr data-rid="${r.id}">
     <td>${esc(r.date)}</td><td class="fw">${esc(r.agent)}</td><td>${esc(r.customer)}</td>
     <td>${esc(r.activateDate||'—')}</td><td>${esc(r.subNo||'—')}</td><td>${esc(r.billNo||'—')}</td><td>${esc(r.phone||'—')}</td>
@@ -2678,10 +2768,114 @@ function renderList(){
     <td class="ctr" title="TNPS 10점 안내">${r.chkTnps?'<span style="color:var(--green);font-size:15px">✅</span>':'<span style="color:var(--ink-4);font-size:13px">—</span>'}</td>
     <td class="ctr" title="응대메모 작성">${r.chkMemo?'<span style="color:var(--green);font-size:15px">✅</span>':'<span style="color:var(--ink-4);font-size:13px">—</span>'}</td>
     <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.memo||'')}">${esc(r.memo||'—')}</td>
-    <td class="ctr">${canEditRecord(r)?`<button class="btn-icon" title="삭제" onclick="deleteRecord('${r.id}')">🗑</button>`:'—'}</td>
+    <td class="ctr" style="white-space:nowrap">${canEditRecord(r)?`<button class="btn-icon" title="수정" onclick="openEditModal('${r.id}')">✏️</button><button class="btn-icon" title="삭제" onclick="deleteRecord('${r.id}')">🗑</button>`:'—'}</td>
   </tr>`).join('');
 }
 function clearFilters(){['flt_agent','flt_customer'].forEach(i=>document.getElementById(i).value='');['flt_contract','flt_subsidy','flt_month'].forEach(i=>document.getElementById(i).value='');renderList()}
+
+/* ── 실적 수정 모달 ──────────────────────────────────── */
+function openEditModal(id){
+  const rec=(_cache.records||[]).find(r=>r.id===id);
+  if(!rec){toast('레코드를 찾을 수 없습니다','err');return}
+  if(!canEditRecord(rec)){toast('수정 권한이 없습니다','err');return}
+
+  document.getElementById('editRecordId').value = id;
+  document.getElementById('editDate').value        = rec.date||'';
+  document.getElementById('editAgent').value       = rec.agent||'';
+  document.getElementById('editCustomer').value    = rec.customer||'';
+  document.getElementById('editActivateDate').value= rec.activateDate||'';
+  document.getElementById('editSubNo').value       = rec.subNo||'';
+  document.getElementById('editBillNo').value      = rec.billNo||'';
+  document.getElementById('editPhone').value       = rec.phone||'';
+  document.getElementById('editBirth').value       = rec.birth||'';
+  document.getElementById('editOldPlan').value     = rec.oldPlan||'';
+  document.getElementById('editNewPlan').value     = rec.newPlan||'';
+  document.getElementById('editContract').value    = rec.contract||'';
+  document.getElementById('editSubsidy').value     = rec.subsidy||'';
+  document.getElementById('editSubsidyStartDate').value = rec.subsidyStartDate||'';
+  document.getElementById('editChkSimulator').checked  = !!rec.chkSimulator;
+  document.getElementById('editChkTnps').checked       = !!rec.chkTnps;
+  document.getElementById('editChkMemo').checked       = !!rec.chkMemo;
+  document.getElementById('editMemo').value        = rec.memo||'';
+
+  // 멤버는 담당자명 수정 불가
+  document.getElementById('editAgent').readOnly = (currentUser?.role==='member');
+
+  toggleEditSubsidyDate();
+  document.getElementById('editModalWrap').style.display='flex';
+}
+
+function closeEditModal(){
+  document.getElementById('editModalWrap').style.display='none';
+}
+
+function toggleEditSubsidyDate(){
+  const v=document.getElementById('editSubsidy').value;
+  document.getElementById('editSubsidyDateWrap').style.display=(v==='대납 있음')?'':'none';
+}
+
+async function submitEditRecord(){
+  const id=document.getElementById('editRecordId').value;
+  const all=_cache.records||[];
+  const orig=all.find(r=>r.id===id);
+  if(!orig){toast('레코드를 찾을 수 없습니다','err');return}
+
+  const oldPlan  = parseInt(document.getElementById('editOldPlan').value)||0;
+  const newPlan  = parseInt(document.getElementById('editNewPlan').value)||0;
+  const contract = document.getElementById('editContract').value;
+  const subsidy  = document.getElementById('editSubsidy').value;
+
+  // 업셀금액 재계산
+  const upsellAmt = calcUpsell(oldPlan, newPlan, contract)||0;
+
+  // 대납 스케줄 초기화 (요금제·약정·대납시작일이 바뀌었을 때 재생성)
+  const subsidyStartDate = document.getElementById('editSubsidyStartDate').value;
+  const activateDate     = document.getElementById('editActivateDate').value;
+  let subsidySchedule = orig.subsidySchedule||[];
+
+  const planChanged = oldPlan!==orig.oldPlan||newPlan!==orig.newPlan
+    ||contract!==orig.contract||subsidy!==orig.subsidy
+    ||subsidyStartDate!==orig.subsidyStartDate;
+
+  if(planChanged && subsidy==='대납 있음'){
+    // 새 스케줄 생성하되 기존 done/doneDate 보존
+    const fresh=calcSubsidySchedule(oldPlan,newPlan,contract,subsidyStartDate||activateDate);
+    subsidySchedule=fresh.map((row,i)=>{
+      const stored=orig.subsidySchedule?.[i];
+      return{...row,done:stored?.done||false,doneDate:stored?.doneDate||''};
+    });
+  } else if(subsidy==='대납 없음'){
+    subsidySchedule=[];
+  }
+
+  const updated={
+    ...orig,
+    date:        document.getElementById('editDate').value,
+    agent:       currentUser?.role==='member'?orig.agent:document.getElementById('editAgent').value,
+    customer:    document.getElementById('editCustomer').value,
+    activateDate,
+    subNo:       document.getElementById('editSubNo').value,
+    billNo:      document.getElementById('editBillNo').value,
+    phone:       document.getElementById('editPhone').value,
+    birth:       document.getElementById('editBirth').value,
+    oldPlan, newPlan, upsellAmt, contract, subsidy,
+    subsidyStartDate,
+    subsidySchedule,
+    subsidyCheckDone: subsidySchedule.length>0&&subsidySchedule.every(r=>r.done),
+    chkSimulator: document.getElementById('editChkSimulator').checked,
+    chkTnps:      document.getElementById('editChkTnps').checked,
+    chkMemo:      document.getElementById('editChkMemo').checked,
+    memo:         document.getElementById('editMemo').value,
+    updatedAt:    todayStr()
+  };
+
+  await DB.updateRecord(updated);
+  _cache.records=null; await DB.getRecords();
+  closeEditModal();
+  updateNavBadge(); updateAlertBadges();
+  renderList(); renderDashboard(); renderPlanCheck(); renderSubsidyCheck();
+  toast('✅ 수정되었습니다','ok');
+}
 async function deleteRecord(id){
   const all=_cache.records||[];const rec=all.find(r=>r.id===id);
   if(!rec||!canEditRecord(rec)){toast('삭제 권한이 없습니다','err');return}
