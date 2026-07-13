@@ -3356,11 +3356,11 @@ function downloadSubsidyExcel(){
   const dlMonth=document.getElementById('subsidyDlMonth')?.value||'';
   const dlLabel=dlMonth?`${dlMonth.split('-')[0]}년 ${parseInt(dlMonth.split('-')[1])}월 포함 건`:'전체';
 
-  let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
-  if(!recs.length){toast('대납 있음 데이터가 없습니다','err');return}
+  const allVisible=getVisibleRecords();
 
-  // 항상 최신 공식으로 금액 재계산 (done/doneDate 상태 보존)
-  recs=recs.map(r=>{
+  // ── 대납있음: 스케줄 재계산
+  let withRecs=allVisible.filter(r=>r.subsidy==='대납 있음');
+  withRecs=withRecs.map(r=>{
     const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
     const sched=fresh.map((row,i)=>{
       const stored=r.subsidySchedule?.[i];
@@ -3371,81 +3371,88 @@ function downloadSubsidyExcel(){
 
   // 월 선택 시 해당 월 포함 건만 필터
   if(dlMonth){
-    recs=recs.filter(r=>r.sched.some(row=>{
+    withRecs=withRecs.filter(r=>r.sched.some(row=>{
       const s=row.periodStart.substring(0,7);
       const e=row.periodEnd.substring(0,7);
       return s<=dlMonth&&e>=dlMonth;
     }));
-    if(!recs.length){toast(`${dlLabel}에 해당하는 대납 데이터가 없습니다`,'err');return}
   }
 
-  // ── 전체 스케줄에서 등장하는 모든 월 수집 → 오름차순 정렬
+  // ── 대납없음
+  const noRecs=allVisible.filter(r=>r.subsidy!=='대납 있음');
+
+  if(!withRecs.length&&!noRecs.length){toast('데이터가 없습니다','err');return}
+
+  // ── 전체 월 수집 (대납있음 기준)
   const monthSet=new Set();
-  recs.forEach(r=>r.sched.forEach(row=>monthSet.add(row.month)));  // 'YYYY.MM'
-  const allMonths=[...monthSet].sort();  // ['2026.07','2026.08','2026.09','2026.10']
+  withRecs.forEach(r=>r.sched.forEach(row=>monthSet.add(row.month)));
+  const allMonths=[...monthSet].sort();
 
-  const toMonthLabel=m=>{
-    const[y,mo]=m.split('.');
-    return `${y}년 ${parseInt(mo)}월`;
-  };
+  const toMonthLabel=m=>{const[y,mo]=m.split('.');return`${y}년 ${parseInt(mo)}월`;};
 
-  // ── 청구계정별 누적 예정액
-  const billTotals={};
-  recs.forEach(r=>{
-    const tot=r.sched.reduce((s,row)=>s+row.amt,0);
-    const key=r.billNo||'—';
-    billTotals[key]=(billTotals[key]||0)+tot;
-  });
-
-  // ── 헤더: 기본 정보 + 월별 대납금액/완료여부 + 합계
+  // ── 헤더 (가입번호 추가)
   const baseHeaders=[
-    '담당자','고객명','청구계정번호','업셀일',
+    '담당자','고객명','가입번호','청구계정번호','업셀일',
     '기존요금제(VAT포함)','업셀요금제(VAT포함)','업셀금액(공급가)',
     '대납 합계금액','현재까지 누적 완료금액'
   ];
   const monthHeaders=allMonths.flatMap(m=>[`${toMonthLabel(m)}\n대납금액`,`${toMonthLabel(m)}\n완료여부`]);
-  const headers=[...baseHeaders,...monthHeaders,'최종 합계금액'];
+  const headers=[...baseHeaders,...monthHeaders,'최종 합계금액','비고'];
 
-  // ── 행 데이터
-  const rows=recs.map(r=>{
+  // ── 대납있음 행
+  const withRows=withRecs.map(r=>{
     const sched=r.sched;
     const totalAmt=sched.reduce((s,row)=>s+row.amt,0);
     const cumDone=sched.filter(row=>row.done).reduce((s,row)=>s+row.amt,0);
 
     const base=[
       r.agent||'',r.customer||'',
-      xT(r.billNo||''),xT(r.activateDate||''),
+      xT(r.subNo||''),xT(r.billNo||''),xT(r.activateDate||''),
       r.oldPlan||0,r.newPlan||0,r.upsellAmt||0,
       totalAmt,cumDone
     ];
 
-    // 월별 금액·완료여부
     let rowTotal=0;
     const monthCells=allMonths.flatMap(m=>{
       const matchRows=sched.filter(row=>row.month===m);
-      if(!matchRows.length) return [0,'—'];  // 해당 월 없음
+      if(!matchRows.length)return[0,'—'];
       const amt=matchRows.reduce((s,row)=>s+row.amt,0);
       const done=matchRows.every(row=>row.done)?'완료':'미완료';
       rowTotal+=amt;
-      return [amt,done];
+      return[amt,done];
     });
 
-    return[...base,...monthCells,rowTotal];
+    return[...base,...monthCells,rowTotal,'대납있음'];
+  });
+
+  // ── 대납없음 행 (월별 칸은 0/해당없음, 합계 0)
+  const noRows=noRecs.map(r=>{
+    const upsell=calcUpsell(r.oldPlan,r.newPlan,r.contract)||0;
+    const base=[
+      r.agent||'',r.customer||'',
+      xT(r.subNo||''),xT(r.billNo||''),xT(r.activateDate||''),
+      r.oldPlan||0,r.newPlan||0,upsell,
+      0,0  // 대납합계, 누적완료 모두 0
+    ];
+    const monthCells=allMonths.flatMap(()=>[0,'해당없음']);
+    return[...base,...monthCells,0,'대납없음'];
   });
 
   // ── 열 너비
-  const baseCols=[10,12,16,10,14,14,14,14,16].map(w=>({wch:w}));
+  const baseCols=[10,12,14,16,10,14,14,14,14,16].map(w=>({wch:w}));
   const monthCols=allMonths.flatMap(()=>[{wch:14},{wch:8}]);
-  const colWidths=[...baseCols,...monthCols,{wch:14}];
 
-  const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
-  ws['!cols']=colWidths;
+  const ws=XLSX.utils.aoa_to_sheet([headers,...withRows,...noRows]);
+  ws['!cols']=[...baseCols,...monthCols,{wch:14},{wch:8}];
   ws['!rows']=[{hpt:36}];
   const wb=XLSX.utils.book_new();
   const sheetName=dlMonth?`대납현황_${dlMonth}`:'대납현황_전체';
   XLSX.utils.book_append_sheet(wb,ws,sheetName);
   XLSX.writeFile(wb,sheetName+'.xlsx');
-  toast(`📥 대납 현황 다운로드 완료 (${allMonths.length}개월)`, 'ok');
+  toast(`📥 대납 현황 다운로드 완료 (대납있음 ${withRows.length}건 · 대납없음 ${noRows.length}건)`,'ok');
+}
+
+  toast(`📥 대납 현황 다운로드 완료 (대납있음 ${withRows.length}건 · 대납없음 ${noRows.length}건)`,'ok');
 }
 async function confirmClear(){
   if(!canAccessRole('admin')){toast('권한이 없습니다','err');return}
