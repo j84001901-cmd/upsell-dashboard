@@ -1123,9 +1123,9 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
           <div style="font-size:11px;color:var(--ink-4);font-weight:600">※ 마감일 오름차순 · 완료 항목은 하단</div>
         </div>
         <div class="tbl-wrap">
-          <table class="tbl" id="subsidyTable" style="min-width:1200px">
+          <table class="tbl" id="subsidyTable" style="min-width:1300px">
             <thead><tr>
-              <th>담당자</th><th>고객명</th><th>업셀일</th>
+              <th>담당자</th><th>가입번호</th><th>고객명</th><th>업셀일</th>
               <th style="text-align:right">월 업셀금액</th>
               <th>차수</th>
               <th>대납 기간</th><th>일수</th>
@@ -2984,84 +2984,72 @@ function renderSubsidyCheck(){
   const fS=document.getElementById('sf_status')?.value||'';
   const today=todayStr();
 
-  // 대납 있음 + 스케줄 재계산
-  let recs=getVisibleRecords().filter(r=>r.subsidy==='대납 있음');
-  recs=recs.map(r=>{
-    // 항상 최신 공식으로 금액 재계산 (기존 done/doneDate 상태는 보존)
+  // ── 전체 실적 (대납있음 + 대납없음 모두)
+  let allRecs=getVisibleRecords();
+  if(fA) allRecs=allRecs.filter(r=>r.agent?.toLowerCase().includes(fA));
+  if(fC) allRecs=allRecs.filter(r=>r.customer?.toLowerCase().includes(fC));
+
+  const withRecs  = allRecs.filter(r=>r.subsidy==='대납 있음');
+  const noSubRecs = allRecs.filter(r=>r.subsidy!=='대납 있음');
+
+  document.getElementById('subsidyCount').textContent=withRecs.length+'건';
+  const tb=document.getElementById('subsidyTbody');
+
+  if(!allRecs.length){
+    tb.innerHTML=`<tr><td colspan="15" class="tbl-empty">📭 데이터가 없습니다</td></tr>`;
+    return;
+  }
+
+  // ── 대납있음: 최신 공식으로 금액 재계산, done/doneDate 보존
+  const withRecsCalc=withRecs.map(r=>{
     const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
     const schedule=fresh.map((row,i)=>{
       const stored=r.subsidySchedule?.[i];
-      return{...row, done:stored?.done||false, doneDate:stored?.doneDate||''};
+      return{...row,done:stored?.done||false,doneDate:stored?.doneDate||''};
     });
     return{...r,schedule};
   });
 
-  // 담당자·고객명 필터
-  recs=recs.filter(r=>{
-    if(fA&&!r.agent?.toLowerCase().includes(fA))return false;
-    if(fC&&!r.customer?.toLowerCase().includes(fC))return false;
-    return true;
-  });
-
-  document.getElementById('subsidyCount').textContent=recs.length+'건';
-  const tb=document.getElementById('subsidyTbody');
-  if(!recs.length){
-    tb.innerHTML=`<tr><td colspan="14" class="tbl-empty">📭 대납 있음 데이터가 없습니다</td></tr>`;
-    return;
-  }
-
-  // ── 모든 차수를 하나의 평면 배열로 펼치기 ─────────────────
+  // ── 대납있음: 차수를 평면 배열로 펼치기
   const rows=[];
-  recs.forEach(r=>{
+  withRecsCalc.forEach(r=>{
     const monthly=calcUpsell(r.oldPlan,r.newPlan,r.contract);
     r.schedule.forEach((row,i)=>{
       const st=getMonthRowStatus(row);
-      if(fS&&st.label!==fS)return; // 상태 필터
+      if(fS&&st.label!==fS)return;
       rows.push({r,row,i,monthly,st});
     });
   });
 
-  if(!rows.length){
-    tb.innerHTML=`<tr><td colspan="14" class="tbl-empty">📭 조건에 맞는 대납 차수가 없습니다</td></tr>`;
-    return;
-  }
-
-  // ── 마감일 오름차순 전체 정렬 — 미완료 먼저, 완료 하단 ──────
+  // ── 마감일 오름차순 전체 정렬 — 미완료 먼저, 완료 하단
   rows.sort((a,b)=>{
     if(a.row.done!==b.row.done) return a.row.done?1:-1;
     return a.row.deadline.localeCompare(b.row.deadline);
   });
 
-  // 완료 구분선 위치
   const doneStartIdx=rows.findIndex(({row})=>row.done);
-
-  // 자세히 패널: 고객당 1개 (첫 등장 위치에 삽입)
   const detailRendered=new Set();
 
-  tb.innerHTML=rows.map(({r,row,i,monthly,st},rowIdx)=>{
-    // 완료 구분선
+  // ── 대납있음 행 렌더
+  const withHtml=rows.map(({r,row,i,monthly,st},rowIdx)=>{
     const separator=(doneStartIdx>0&&rowIdx===doneStartIdx)
-      ?`<tr><td colspan="14" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
+      ?`<tr><td colspan="15" style="padding:0;border:none"><div style="border-top:2px dashed var(--border);margin:4px 0;position:relative"><span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 10px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">✅ 완료 항목</span></div></td></tr>`
       :'';
 
-    // 행 스타일
     const isHighlight=(st.key==='delayed'||st.key==='today')&&!row.done;
     const rowStyle=`${isHighlight?'background:rgba(239,68,68,.05)':row.done?'background:rgba(16,185,129,.04)':''};${row.done?'opacity:.7':''}`;
 
-    // 차수 배지 색상
     const ordinalBg=row.done?'var(--green-dim)':st.key==='delayed'?'var(--red-dim)':st.key==='today'?'var(--orange-dim)':st.key==='imminent'?'var(--amber-dim)':'var(--brand-dim)';
     const ordinalColor=row.done?'var(--green-text)':st.key==='delayed'?'var(--red-text)':st.key==='today'?'var(--orange-text)':st.key==='imminent'?'var(--amber-text)':'var(--brand-text)';
-
-    // 완료일자 표시
     const doneDateHtml=row.done&&row.doneDate
       ?`<span style="font-size:11px;color:var(--green-text);font-weight:600">${row.doneDate}</span>`
       :`<span style="color:var(--ink-4);font-size:11px">—</span>`;
 
-    // 자세히 버튼 (모든 행에 표시, data-panel 속성으로 패널 ID 연결)
     const detailBtn=`<button class="btn-detail" data-panel="${r.id}" onclick="toggleSubsidyPanel('${r.id}')" title="전체 대납 일정 보기">📋 자세히</button>`;
 
     const dataRow=`<tr data-rid="${r.id}" style="${rowStyle}">
       <td class="fw" style="white-space:nowrap">${esc(r.agent)}</td>
+      <td style="font-size:11px;color:var(--ink-3)">${esc(r.subNo||'—')}</td>
       <td style="white-space:nowrap">${esc(r.customer)}</td>
       <td style="white-space:nowrap;font-size:11px">${esc(r.activateDate||'—')}</td>
       <td class="num">${fmt(monthly)}</td>
@@ -3087,7 +3075,7 @@ function renderSubsidyCheck(){
       <td class="ctr">${detailBtn}</td>
     </tr>`;
 
-    // 자세히 패널 — 고객당 1개, 첫 등장 직후 삽입
+    // 자세히 패널
     let panelRow='';
     if(!detailRendered.has(r.id)){
       detailRendered.add(r.id);
@@ -3112,7 +3100,7 @@ function renderSubsidyCheck(){
       }).join('');
 
       panelRow=`<tr id="sdp_${r.id}" style="display:none">
-        <td colspan="14" style="padding:0">
+        <td colspan="15" style="padding:0">
           <div class="subsidy-detail-panel">
             <div class="sdp-header">
               <div class="sdp-title">📋 ${esc(r.customer)} 전체 대납 일정 (${r.schedule.length}차)</div>
@@ -3132,9 +3120,42 @@ function renderSubsidyCheck(){
         </td>
       </tr>`;
     }
-
     return separator+dataRow+panelRow;
   }).join('');
+
+  // ── 대납없음 행 렌더 (상태 필터 있으면 숨김)
+  let noSubHtml='';
+  if(!fS&&noSubRecs.length){
+    const noSubSeparator=`<tr><td colspan="15" style="padding:0;border:none">
+      <div style="border-top:2px dashed var(--border);margin:6px 0;position:relative">
+        <span style="position:absolute;left:50%;transform:translateX(-50%);top:-9px;background:var(--surface);padding:0 12px;font-size:10px;color:var(--ink-4);font-weight:600;white-space:nowrap">📋 대납 없음 (정산 참고용)</span>
+      </div></td></tr>`;
+
+    const noSubRows=noSubRecs.map(r=>{
+      const upsell=calcUpsell(r.oldPlan,r.newPlan,r.contract)||0;
+      return`<tr style="opacity:.65;background:var(--surface-2)">
+        <td class="fw" style="white-space:nowrap">${esc(r.agent)}</td>
+        <td style="font-size:11px;color:var(--ink-3)">${esc(r.subNo||'—')}</td>
+        <td style="white-space:nowrap">${esc(r.customer)}</td>
+        <td style="font-size:11px">${esc(r.activateDate||'—')}</td>
+        <td class="num" style="font-weight:700">${fmt(upsell)}</td>
+        <td class="ctr" style="color:var(--ink-4);font-size:11px">—</td>
+        <td style="color:var(--ink-4);font-size:11px">—</td>
+        <td class="ctr" style="color:var(--ink-4);font-size:11px">—</td>
+        <td class="num" style="font-weight:800;color:var(--ink-4)">0원</td>
+        <td style="color:var(--ink-4);font-size:11px">—</td>
+        <td class="ctr"><span class="status-chip" style="background:var(--surface-2);color:var(--ink-4);border:1px solid var(--border)">대납없음</span></td>
+        <td class="ctr" style="color:var(--ink-4);font-size:11px">—</td>
+        <td class="ctr" style="color:var(--ink-4);font-size:11px">—</td>
+        <td style="color:var(--ink-4);font-size:11px">—</td>
+        <td class="ctr" style="color:var(--ink-4);font-size:11px">—</td>
+      </tr>`;
+    }).join('');
+
+    noSubHtml=noSubSeparator+noSubRows;
+  }
+
+  tb.innerHTML = (withHtml||`<tr><td colspan="15" style="padding:12px 16px;color:var(--ink-4);font-size:12px;text-align:center">대납 있음 데이터가 없습니다</td></tr>`) + noSubHtml;
 }
 function toggleSubsidyPanel(recId){
   const panel=document.getElementById('sdp_'+recId);
