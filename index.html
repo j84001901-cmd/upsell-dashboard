@@ -3451,9 +3451,6 @@ function downloadSubsidyExcel(){
   XLSX.writeFile(wb,sheetName+'.xlsx');
   toast(`📥 대납 현황 다운로드 완료 (대납있음 ${withRows.length}건 · 대납없음 ${noRows.length}건)`,'ok');
 }
-
-  toast(`📥 대납 현황 다운로드 완료 (대납있음 ${withRows.length}건 · 대납없음 ${noRows.length}건)`,'ok');
-}
 async function confirmClear(){
   if(!canAccessRole('admin')){toast('권한이 없습니다','err');return}
   if(!confirm('⚠️ 모든 실적 데이터를 삭제합니다. 계속하시겠습니까?'))return;
