@@ -663,6 +663,14 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
 .edit-field .fi{width:100%}
 .edit-chk-row{display:flex;gap:16px;align-items:center;padding:10px 14px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border)}
 .edit-footer{display:flex;gap:10px;padding-top:4px}
+/* ── 대납 반려 ── */
+.reject-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:800;background:var(--red-dim);color:var(--red-text);border:1px solid rgba(239,68,68,.2)}
+.reject-search-result{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface-2);border-radius:12px;margin-bottom:8px;border:1.5px solid var(--border);transition:border-color .15s}
+.reject-search-result.is-rejected{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.03)}
+.btn-reject{padding:6px 14px;border-radius:8px;border:none;background:var(--red);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-reject:hover{opacity:.88}
+.btn-reject-cancel{padding:6px 14px;border-radius:8px;border:1.5px solid var(--red);background:transparent;color:var(--red-text);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.reject-disabled{opacity:.45;pointer-events:none;cursor:not-allowed!important;filter:grayscale(.4)}
 </style>
 </head>
 <body>
@@ -1107,6 +1115,24 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
         <div class="sec-actions" style="gap:8px">
           <input type="month" id="subsidyDlMonth" class="fi" style="padding:5px 10px;font-size:12px;width:150px" title="특정 월 포함 건만 필터 (빈칸=전체)"/>
           <button class="btn btn-success btn-sm" onclick="downloadSubsidyExcel()">⬇ 대납 현황 Excel</button>
+        </div>
+      </div>
+
+      <!-- 대납 반려 처리 (관리자 전용) -->
+      <div class="card" id="subsidyRejectCard" style="display:none;border:1.5px solid rgba(239,68,68,.25)">
+        <div class="card-header">
+          <div class="card-header-left"><span>⛔</span><span class="card-title">대납 반려 처리</span>
+            <span style="font-size:11px;color:var(--red-text);font-weight:600;background:var(--red-dim);padding:2px 8px;border-radius:99px">관리자 전용</span>
+          </div>
+          <div style="font-size:11px;color:var(--ink-4)">본사 미인정 건 · 반려 시 이후 차수 완료 체크 불가</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input class="fi" id="rejectSubNoInput" type="text" placeholder="가입번호 입력 후 검색…" style="width:220px" onkeydown="if(event.key==='Enter')searchForReject()"/>
+            <button class="btn btn-primary btn-sm" onclick="searchForReject()">🔍 검색</button>
+            <span style="font-size:11px;color:var(--ink-4)">대납 있음 건만 검색됩니다</span>
+          </div>
+          <div id="rejectSearchResults"></div>
         </div>
       </div>
       <div class="filter-bar">
@@ -2985,6 +3011,10 @@ function getMonthRowStatus(row){
 }
 
 function renderSubsidyCheck(){
+  // 관리자만 반려 처리 카드 표시
+  const rejectCard=document.getElementById('subsidyRejectCard');
+  if(rejectCard) rejectCard.style.display=canAccessRole('admin')?'':'none';
+
   // 월 다운로드 picker 기본값 초기화 (최초 1회)
   const dlMo=document.getElementById('subsidyDlMonth');
   if(dlMo&&!dlMo.value) dlMo.value=todayStr().substring(0,7);
@@ -3049,6 +3079,10 @@ function renderSubsidyCheck(){
     const isHighlight=(st.key==='delayed'||st.key==='today')&&!row.done;
     const rowStyle=`${isHighlight?'background:rgba(239,68,68,.05)':row.done?'background:rgba(16,185,129,.04)':''};${row.done?'opacity:.7':''}`;
 
+    const isRejected=!!r.subsidyRejected;
+    // 반려건: 미완료 차수는 체크 불가
+    const checkBlocked=isRejected&&!row.done;
+
     const ordinalBg=row.done?'var(--green-dim)':st.key==='delayed'?'var(--red-dim)':st.key==='today'?'var(--orange-dim)':st.key==='imminent'?'var(--amber-dim)':'var(--brand-dim)';
     const ordinalColor=row.done?'var(--green-text)':st.key==='delayed'?'var(--red-text)':st.key==='today'?'var(--orange-text)':st.key==='imminent'?'var(--amber-text)':'var(--brand-text)';
     const doneDateHtml=row.done&&row.doneDate
@@ -3074,10 +3108,14 @@ function renderSubsidyCheck(){
       <td style="font-size:11px;white-space:nowrap;color:${st.key==='delayed'?'var(--red)':'var(--ink-2)'};font-weight:${st.key==='delayed'?'700':'400'}">
         ${row.deadline}${st.key==='delayed'?' ⚠️':''}
       </td>
-      <td class="ctr"><span class="status-chip ${st.cls}">${st.label}</span></td>
+      <td class="ctr"><span class="status-chip ${st.cls}">${st.label}</span>${isRejected&&!row.done?`<br><span class="reject-badge" style="margin-top:3px">⛔반려</span>`:''}
+      </td>
       <td class="ctr">
-        <button class="btn-check ${row.done?'done':''}" onclick="toggleScheduleRow('${r.id}',${i})" style="white-space:nowrap">
-          ${row.done?'✅ 완료':'☐ 완료'}
+        <button class="btn-check ${row.done?'done':''} ${checkBlocked?'reject-disabled':''}"
+          onclick="${checkBlocked?'return false':`toggleScheduleRow('${r.id}',${i})`}"
+          title="${checkBlocked?'반려 처리된 건 — 완료 체크 불가':row.done?'완료 취소':'완료 처리'}"
+          style="white-space:nowrap">
+          ${checkBlocked?'🚫 차단됨':row.done?'✅ 완료':'☐ 완료'}
         </button>
       </td>
       <td class="ctr">${doneDateHtml}</td>
@@ -3113,11 +3151,14 @@ function renderSubsidyCheck(){
         <td colspan="15" style="padding:0">
           <div class="subsidy-detail-panel">
             <div class="sdp-header">
-              <div class="sdp-title">📋 ${esc(r.customer)} 전체 대납 일정 (${r.schedule.length}차)</div>
-              <div style="font-size:11px;color:var(--brand-text);font-weight:700">
-                완료 ${fmt(doneAmt)} / 총 ${fmt(totalAmt)}
-                &nbsp;·&nbsp;
-                ${r.schedule.filter(rw=>rw.done).length}/${r.schedule.length}차 완료
+              <div class="sdp-title">📋 ${esc(r.customer)} 전체 대납 일정 (${r.schedule.length}차)
+                ${r.subsidyRejected?`<span class="reject-badge" style="margin-left:8px">⛔ 반려됨</span>`:''}
+              </div>
+              <div style="font-size:11px;font-weight:700">
+                ${r.subsidyRejected
+                  ?`<span style="color:var(--red-text)">⛔ ${r.subsidyRejectedAt||''} 반려 · ${esc(r.subsidyRejectedBy||'')}${r.subsidyRejectedReason?' · '+esc(r.subsidyRejectedReason):''}</span>`
+                  :`<span style="color:var(--brand-text)">완료 ${fmt(doneAmt)} / 총 ${fmt(totalAmt)} &nbsp;·&nbsp; ${r.schedule.filter(rw=>rw.done).length}/${r.schedule.length}차 완료</span>`
+                }
               </div>
             </div>
             <div style="padding:4px 0">
@@ -3183,17 +3224,111 @@ async function toggleScheduleRow(recId, rowIdx){
   const all=_cache.records||[];
   const idx=all.findIndex(r=>r.id===recId);
   if(idx===-1)return;
-  if(!all[idx].subsidySchedule||!all[idx].subsidySchedule[rowIdx])return;
-  all[idx].subsidySchedule[rowIdx].done=!all[idx].subsidySchedule[rowIdx].done;
-  if(all[idx].subsidySchedule[rowIdx].done)
-    all[idx].subsidySchedule[rowIdx].doneDate=todayStr();  // 완료 시 오늘 날짜 기록
+  const rec=all[idx];
+
+  // ⛔ 반려된 건 — 미완료 차수는 체크 불가 (이미 완료된 건은 유지)
+  if(rec.subsidyRejected && !rec.subsidySchedule?.[rowIdx]?.done){
+    toast('⛔ 반려 처리된 건은 이후 차수를 완료 처리할 수 없습니다','err');
+    return;
+  }
+
+  if(!rec.subsidySchedule||!rec.subsidySchedule[rowIdx])return;
+  rec.subsidySchedule[rowIdx].done=!rec.subsidySchedule[rowIdx].done;
+  if(rec.subsidySchedule[rowIdx].done)
+    rec.subsidySchedule[rowIdx].doneDate=todayStr();
   else
-    all[idx].subsidySchedule[rowIdx].doneDate='';          // 🐛버그수정: 취소 시 초기화
-  all[idx].subsidyCheckDone=all[idx].subsidySchedule.every(r=>r.done);
-  all[idx].updatedAt=todayStr();
-  await DB.updateRecord(all[idx]);_cache.records=null;await DB.getRecords();
+    rec.subsidySchedule[rowIdx].doneDate='';
+  rec.subsidyCheckDone=rec.subsidySchedule.every(r=>r.done);
+  rec.updatedAt=todayStr();
+  await DB.updateRecord(rec);_cache.records=null;await DB.getRecords();
   updateAlertBadges();
   renderSubsidyCheck();
+}
+
+/* ── 대납 반려 처리 ──────────────────────────────────────
+   관리자가 가입번호로 검색 → 해당 건 선택 → 반려 처리
+   반려 시: 이후 미완료 차수 체크 불가 / 이미 완료건은 유지
+────────────────────────────────────────────────────── */
+function searchForReject(){
+  const subNo=document.getElementById('rejectSubNoInput')?.value.trim();
+  if(!subNo){toast('가입번호를 입력하세요','err');return}
+  const recs=getVisibleRecords().filter(r=>
+    r.subsidy==='대납 있음' && r.subNo && r.subNo.includes(subNo)
+  );
+  const el=document.getElementById('rejectSearchResults');
+  if(!recs.length){
+    el.innerHTML=`<div style="font-size:12px;color:var(--ink-4);padding:8px 0">일치하는 대납 있음 건이 없습니다</div>`;
+    return;
+  }
+  el.innerHTML=recs.map(r=>{
+    const rejected=!!r.subsidyRejected;
+    const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
+    const sched=fresh.map((row,i)=>({...row,done:r.subsidySchedule?.[i]?.done||false}));
+    const doneCnt=sched.filter(s=>s.done).length;
+    const totalCnt=sched.length;
+    return`<div class="reject-search-result ${rejected?'is-rejected':''}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:800;color:var(--ink-1)">${esc(r.customer)}</div>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:2px">
+          담당자: ${esc(r.agent)} &nbsp;·&nbsp; 가입번호: <b>${esc(r.subNo)}</b> &nbsp;·&nbsp; 업셀일: ${esc(r.activateDate||'—')}
+        </div>
+        <div style="font-size:11px;color:var(--ink-3)">
+          요금제: ${esc(r.oldPlan?.toLocaleString()||'—')}원 → ${esc(r.newPlan?.toLocaleString()||'—')}원 &nbsp;·&nbsp; 완료: ${doneCnt}/${totalCnt}차
+        </div>
+        ${rejected?`<div style="font-size:11px;color:var(--red-text);font-weight:700;margin-top:4px">
+          ⛔ 반려됨 (${r.subsidyRejectedAt||'—'} · ${esc(r.subsidyRejectedBy||'—')})
+          ${r.subsidyRejectedReason?`<span style="color:var(--ink-3)"> · ${esc(r.subsidyRejectedReason)}</span>`:''}
+        </div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${!rejected
+          ?`<button class="btn-reject" onclick="confirmReject('${r.id}')">⛔ 반려 처리</button>`
+          :`<button class="btn-reject-cancel" onclick="confirmCancelReject('${r.id}')">↩ 반려 취소</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function confirmReject(id){
+  const rec=(_cache.records||[]).find(r=>r.id===id);
+  if(!rec){toast('데이터를 찾을 수 없습니다','err');return}
+  const reason=prompt(`[대납 반려 처리]\n\n고객명: ${rec.customer}\n가입번호: ${rec.subNo||'—'}\n\n반려 사유를 입력하세요 (선택사항):`);
+  if(reason===null)return; // 취소 버튼
+  if(!confirm(`${rec.customer} (${rec.subNo||'—'}) 대납을 반려 처리합니다.\n\n이후 미완료 차수는 완료 체크가 불가능해집니다.\n계속하시겠습니까?`))return;
+
+  const updated={
+    ...rec,
+    subsidyRejected:true,
+    subsidyRejectedAt:todayStr(),
+    subsidyRejectedBy:currentUser?.name||'',
+    subsidyRejectedReason:reason?.trim()||'',
+    updatedAt:todayStr()
+  };
+  await DB.updateRecord(updated);
+  _cache.records=null; await DB.getRecords();
+  toast(`⛔ ${rec.customer} 대납 반려 처리 완료`,'ok');
+  renderSubsidyCheck();
+  searchForReject();
+}
+
+async function confirmCancelReject(id){
+  const rec=(_cache.records||[]).find(r=>r.id===id);
+  if(!rec)return;
+  if(!confirm(`${rec.customer} 대납 반려를 취소합니다.\n이후 차수 완료 체크가 다시 가능해집니다.`))return;
+  const updated={
+    ...rec,
+    subsidyRejected:false,
+    subsidyRejectedAt:'',
+    subsidyRejectedBy:'',
+    subsidyRejectedReason:'',
+    updatedAt:todayStr()
+  };
+  await DB.updateRecord(updated);
+  _cache.records=null; await DB.getRecords();
+  toast(`↩ ${rec.customer} 대납 반려 취소 완료`,'ok');
+  renderSubsidyCheck();
+  searchForReject();
 }
 function clearSubsidyFilters(){['sf_agent','sf_customer'].forEach(i=>document.getElementById(i).value='');document.getElementById('sf_status').value='';renderSubsidyCheck()}
 async function toggleSubsidyCheck(id){
