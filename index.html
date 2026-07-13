@@ -693,7 +693,7 @@ textarea.fi{resize:vertical;min-height:68px;line-height:1.5}
       <button class="btn-login" onclick="doLogin()">로그인</button>
     </div>
     <div class="logo-upload-hint">🖼 로고 변경: <label for="logoFileInput">이미지 업로드</label><input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogo(this)"/></div>
-    <div style="margin-top:14px;padding:10px 14px;background:var(--brand-dim);border-radius:var(--r-md);font-size:11px;color:var(--brand-text);text-align:center;line-height:1.6">
+    <div id="firstLoginHint" style="display:none;margin-top:14px;padding:10px 14px;background:var(--brand-dim);border-radius:var(--r-md);font-size:11px;color:var(--brand-text);text-align:center;line-height:1.6">
       최초 로그인: <strong>admin</strong> / <strong>admin1234</strong><br/>
       로그인 후 반드시 비밀번호를 변경하세요
     </div>
@@ -1837,6 +1837,9 @@ async function initSuperAdmin(){
       active:true, mustChangePw:true, createdAt:todayStr()
     });
     _cache.users = null;
+    // 최초 계정 생성 시에만 힌트 박스 표시
+    const hint = document.getElementById('firstLoginHint');
+    if(hint) hint.style.display = 'block';
     console.log('✅ 최초 슈퍼관리자 계정 생성 완료 (ID: admin / PW: admin1234)');
   }
 }
@@ -1868,21 +1871,28 @@ async function doLogin(){
   const remember=document.getElementById('li_remember').checked;
   if(!id||!pw){showLoginError('아이디와 비밀번호를 입력하세요.');return}
   showLoginLoading(true);
-  const users = await DB.getUsers();
-  showLoginLoading(false);
-  const user=users.find(u=>u.loginId===id);
-  if(!user){showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');return}
-  if(!user.active){showLoginError('비활성화된 계정입니다. 관리자에게 문의하세요.');return}
-  const hash=await sha256(pw);
-  if(hash!==user.pwHash){showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');return}
-  currentUser=user;
-  setSession(user,remember);
-  hideLoginError();
-  // 캐시 초기화 (다른 계정 데이터 혼입 방지)
-  _cache.users=null;
-  _cache.records=null;
-  _cache.offline=null;
-  if(user.mustChangePw){openChangePwModal(true)}else{await enterApp()}
+  try{
+    const users = await DB.getUsers();
+    showLoginLoading(false);
+    if(!users||!users.length){showLoginError('서버 연결에 실패했습니다. 새로고침 후 다시 시도하세요.');return}
+    const user=users.find(u=>u.loginId===id);
+    if(!user){showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');return}
+    if(!user.active){showLoginError('비활성화된 계정입니다. 관리자에게 문의하세요.');return}
+    const hash=await sha256(pw);
+    if(hash!==user.pwHash){showLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');return}
+    currentUser=user;
+    setSession(user,remember);
+    hideLoginError();
+    // 캐시 초기화 (다른 계정 데이터 혼입 방지)
+    _cache.users=null;
+    _cache.records=null;
+    _cache.offline=null;
+    if(user.mustChangePw){openChangePwModal(true)}else{await enterApp()}
+  }catch(e){
+    showLoginLoading(false);
+    console.error('로그인 오류:', e);
+    showLoginError('서버 연결에 실패했습니다. 새로고침 후 다시 시도하세요.');
+  }
 }
 function showLoginError(msg){const el=document.getElementById('loginError');el.textContent=msg;el.classList.add('show')}
 function hideLoginError(){document.getElementById('loginError').classList.remove('show')}
