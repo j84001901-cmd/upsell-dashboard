@@ -1614,11 +1614,7 @@ function recordToDbRow(r){
     subsidy_check_memo:r.subsidyCheckMemo||'',
     chk_simulator:r.chkSimulator||false,
     chk_tnps:r.chkTnps||false,
-    chk_memo:r.chkMemo||false,
-    subsidy_rejected:r.subsidyRejected||false,
-    subsidy_rejected_at:r.subsidyRejectedAt||'',
-    subsidy_rejected_by:r.subsidyRejectedBy||'',
-    subsidy_rejected_reason:r.subsidyRejectedReason||''
+    chk_memo:r.chkMemo||false
   };
 }
 function dbRowToRecord(r){
@@ -1636,11 +1632,8 @@ function dbRowToRecord(r){
     memo:r.memo,
     planCheckDone:r.plan_check_done, planCheckMemo:r.plan_check_memo,
     subsidyCheckDone:r.subsidy_check_done, subsidyCheckMemo:r.subsidy_check_memo,
-    chkSimulator:r.chk_simulator, chkTnps:r.chk_tnps, chkMemo:r.chk_memo,
-    subsidyRejected:r.subsidy_rejected||false,
-    subsidyRejectedAt:r.subsidy_rejected_at||'',
-    subsidyRejectedBy:r.subsidy_rejected_by||'',
-    subsidyRejectedReason:r.subsidy_rejected_reason||''
+    chkSimulator:r.chk_simulator, chkTnps:r.chk_tnps, chkMemo:r.chk_memo
+    // subsidyRejected 등 반려 필드는 settings 테이블에서 별도 로드 (getRejectData 참조)
   };
 }
 
@@ -1993,7 +1986,8 @@ async function enterApp(){
   applyLogo();
   updateNavBadge();
   updateAlertBadges();
-  updateMonthPickerUI();   // 월 피커 초기 라벨 설정
+  updateMonthPickerUI();
+  await loadRejectData();   // 반려 데이터 로드 (settings 테이블)
   renderDashboard();
   // 출근 체크 (member 역할만)
   setTimeout(()=>checkAttendanceOnLogin(), 800);
@@ -3088,7 +3082,7 @@ function renderSubsidyCheck(){
     const isHighlight=(st.key==='delayed'||st.key==='today')&&!row.done;
     const rowStyle=`${isHighlight?'background:rgba(239,68,68,.05)':row.done?'background:rgba(16,185,129,.04)':''};${row.done?'opacity:.7':''}`;
 
-    const isRejected=!!r.subsidyRejected;
+    const isRejected=!!(getRejectInfo(r.id)?.rejected);
     // 반려건: 미완료 차수는 체크 불가
     const checkBlocked=isRejected&&!row.done;
 
@@ -3132,11 +3126,11 @@ function renderSubsidyCheck(){
       <td class="ctr">
         <button class="btn-check ${row.done?'done':''} ${checkBlocked?'reject-disabled':''}"
           onclick="${checkBlocked?'return false':`toggleScheduleRow('${r.id}',${i})`}"
-          title="${checkBlocked?`반려: ${r.subsidyRejectedReason||'사유 없음'}`:row.done?'완료 취소':'완료 처리'}"
+          title="${checkBlocked?`반려: ${getRejectInfo(r.id)?.rejectedReason||'사유 없음'}`:row.done?'완료 취소':'완료 처리'}"
           style="white-space:nowrap">
           ${checkBlocked?'🚫 완료불가':row.done?'✅ 완료':'☐ 완료'}
         </button>
-        ${checkBlocked&&r.subsidyRejectedReason?`<div style="font-size:10px;color:var(--red-text);margin-top:3px;max-width:90px;word-break:break-all">${esc(r.subsidyRejectedReason)}</div>`:''}
+        ${checkBlocked&&getRejectInfo(r.id)?.rejectedReason?`<div style="font-size:10px;color:var(--red-text);margin-top:3px;max-width:90px;word-break:break-all">${esc(getRejectInfo(r.id)?.rejectedReason)}</div>`:''}
       </td>
       <td class="ctr">${doneDateHtml}</td>
       <td><input type="text" class="fi" style="min-width:90px;padding:5px 8px;font-size:11px" value="${esc(r.subsidyCheckMemo||'')}" placeholder="메모" onchange="updateSubsidyMemo('${r.id}',this.value)"/></td>
@@ -3172,11 +3166,11 @@ function renderSubsidyCheck(){
           <div class="subsidy-detail-panel">
             <div class="sdp-header">
               <div class="sdp-title">📋 ${esc(r.customer)} 전체 대납 일정 (${r.schedule.length}차)
-                ${r.subsidyRejected?`<span class="reject-badge" style="margin-left:8px">⛔ 반려됨</span>`:''}
+                ${getRejectInfo(r.id)?.rejected?`<span class="reject-badge" style="margin-left:8px">⛔ 반려됨</span>`:''}
               </div>
               <div style="font-size:11px;font-weight:700">
-                ${r.subsidyRejected
-                  ?`<span style="color:var(--red-text)">⛔ ${r.subsidyRejectedAt||''} 반려 · ${esc(r.subsidyRejectedBy||'')}${r.subsidyRejectedReason?' · '+esc(r.subsidyRejectedReason):''}</span>`
+                ${getRejectInfo(r.id)?.rejected
+                  ?`<span style="color:var(--red-text)">⛔ ${getRejectInfo(r.id)?.rejectedAt||''} 반려 · ${esc(getRejectInfo(r.id)?.rejectedBy||'')}${getRejectInfo(r.id)?.rejectedReason?' · '+esc(getRejectInfo(r.id)?.rejectedReason):''}</span>`
                   :`<span style="color:var(--brand-text)">완료 ${fmt(doneAmt)} / 총 ${fmt(totalAmt)} &nbsp;·&nbsp; ${r.schedule.filter(rw=>rw.done).length}/${r.schedule.length}차 완료</span>`
                 }
               </div>
@@ -3247,7 +3241,8 @@ async function toggleScheduleRow(recId, rowIdx){
   const rec=all[idx];
 
   // ⛔ 반려된 건 — 미완료 차수는 체크 불가 (이미 완료된 건은 유지)
-  if(rec.subsidyRejected && !rec.subsidySchedule?.[rowIdx]?.done){
+  const rejectInfo=getRejectInfo(recId);
+  if(rejectInfo?.rejected && !rec.subsidySchedule?.[rowIdx]?.done){
     toast('⛔ 반려 처리된 건은 이후 차수를 완료 처리할 수 없습니다','err');
     return;
   }
@@ -3281,7 +3276,8 @@ function searchForReject(){
     return;
   }
   el.innerHTML=recs.map(r=>{
-    const rejected=!!r.subsidyRejected;
+    const ri=getRejectInfo(r.id);
+    const rejected=!!(ri?.rejected);
     const fresh=calcSubsidySchedule(r.oldPlan,r.newPlan,r.contract,r.subsidyStartDate||r.activateDate);
     const sched=fresh.map((row,i)=>({...row,done:r.subsidySchedule?.[i]?.done||false}));
     const doneCnt=sched.filter(s=>s.done).length;
@@ -3296,8 +3292,8 @@ function searchForReject(){
           요금제: ${esc(r.oldPlan?.toLocaleString()||'—')}원 → ${esc(r.newPlan?.toLocaleString()||'—')}원 &nbsp;·&nbsp; 완료: ${doneCnt}/${totalCnt}차
         </div>
         ${rejected?`<div style="font-size:11px;color:var(--red-text);font-weight:700;margin-top:4px">
-          ⛔ 반려됨 (${r.subsidyRejectedAt||'—'} · ${esc(r.subsidyRejectedBy||'—')})
-          ${r.subsidyRejectedReason?`<span style="color:var(--ink-3)"> · ${esc(r.subsidyRejectedReason)}</span>`:''}
+          ⛔ 반려됨 (${ri?.rejectedAt||'—'} · ${esc(ri?.rejectedBy||'—')})
+          ${ri?.rejectedReason?`<span style="color:var(--ink-3)"> · ${esc(ri.rejectedReason)}</span>`:''}
         </div>`:''}
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
@@ -3310,23 +3306,56 @@ function searchForReject(){
   }).join('');
 }
 
+/* ── 반려 데이터: settings 테이블에 저장 (records 컬럼 추가 불필요) ──
+   키: reject_{recordId}
+   값: JSON {rejected, rejectedAt, rejectedBy, rejectedReason}
+──────────────────────────────────────────────────────────────── */
+const _rejectCache = {};  // recordId → reject 객체
+
+async function loadRejectData(){
+  try{
+    const rows = await sbFetch('settings?key=like.reject_*') || [];
+    rows.forEach(r=>{
+      const id = r.key.replace('reject_','');
+      try{ _rejectCache[id] = JSON.parse(r.value); }catch(e){}
+    });
+  }catch(e){ console.warn('반려 데이터 로드 실패', e); }
+}
+
+function getRejectInfo(recId){
+  return _rejectCache[recId] || null;
+}
+
+async function saveRejectInfo(recId, info){
+  const key = `reject_${recId}`;
+  await sbFetch('settings',{
+    method:'POST',
+    headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({key, value: JSON.stringify(info)})
+  });
+  _rejectCache[recId] = info;
+}
+
+async function deleteRejectInfo(recId){
+  const key = `reject_${recId}`;
+  await sbFetch(`settings?key=eq.${key}`,{method:'DELETE',prefer:'return=minimal'});
+  delete _rejectCache[recId];
+}
+
 async function confirmReject(id){
   const rec=(_cache.records||[]).find(r=>r.id===id);
   if(!rec){toast('데이터를 찾을 수 없습니다','err');return}
   const reason=prompt(`[대납 반려 처리]\n\n고객명: ${rec.customer}\n가입번호: ${rec.subNo||'—'}\n\n반려 사유를 입력하세요 (선택사항):`);
-  if(reason===null)return; // 취소 버튼
+  if(reason===null)return;
   if(!confirm(`${rec.customer} (${rec.subNo||'—'}) 대납을 반려 처리합니다.\n\n이후 미완료 차수는 완료 체크가 불가능해집니다.\n계속하시겠습니까?`))return;
 
-  const updated={
-    ...rec,
-    subsidyRejected:true,
-    subsidyRejectedAt:todayStr(),
-    subsidyRejectedBy:currentUser?.name||'',
-    subsidyRejectedReason:reason?.trim()||'',
-    updatedAt:todayStr()
+  const info={
+    rejected:true,
+    rejectedAt:todayStr(),
+    rejectedBy:currentUser?.name||'',
+    rejectedReason:reason?.trim()||''
   };
-  await DB.updateRecord(updated);
-  _cache.records=null; await DB.getRecords();
+  await saveRejectInfo(id, info);
   toast(`⛔ ${rec.customer} 대납 반려 처리 완료`,'ok');
   renderSubsidyCheck();
   searchForReject();
@@ -3336,16 +3365,7 @@ async function confirmCancelReject(id){
   const rec=(_cache.records||[]).find(r=>r.id===id);
   if(!rec)return;
   if(!confirm(`${rec.customer} 대납 반려를 취소합니다.\n이후 차수 완료 체크가 다시 가능해집니다.`))return;
-  const updated={
-    ...rec,
-    subsidyRejected:false,
-    subsidyRejectedAt:'',
-    subsidyRejectedBy:'',
-    subsidyRejectedReason:'',
-    updatedAt:todayStr()
-  };
-  await DB.updateRecord(updated);
-  _cache.records=null; await DB.getRecords();
+  await deleteRejectInfo(id);
   toast(`↩ ${rec.customer} 대납 반려 취소 완료`,'ok');
   renderSubsidyCheck();
   searchForReject();
