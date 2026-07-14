@@ -1614,7 +1614,11 @@ function recordToDbRow(r){
     subsidy_check_memo:r.subsidyCheckMemo||'',
     chk_simulator:r.chkSimulator||false,
     chk_tnps:r.chkTnps||false,
-    chk_memo:r.chkMemo||false
+    chk_memo:r.chkMemo||false,
+    subsidy_rejected:r.subsidyRejected||false,
+    subsidy_rejected_at:r.subsidyRejectedAt||'',
+    subsidy_rejected_by:r.subsidyRejectedBy||'',
+    subsidy_rejected_reason:r.subsidyRejectedReason||''
   };
 }
 function dbRowToRecord(r){
@@ -1632,7 +1636,11 @@ function dbRowToRecord(r){
     memo:r.memo,
     planCheckDone:r.plan_check_done, planCheckMemo:r.plan_check_memo,
     subsidyCheckDone:r.subsidy_check_done, subsidyCheckMemo:r.subsidy_check_memo,
-    chkSimulator:r.chk_simulator, chkTnps:r.chk_tnps, chkMemo:r.chk_memo
+    chkSimulator:r.chk_simulator, chkTnps:r.chk_tnps, chkMemo:r.chk_memo,
+    subsidyRejected:r.subsidy_rejected||false,
+    subsidyRejectedAt:r.subsidy_rejected_at||'',
+    subsidyRejectedBy:r.subsidy_rejected_by||'',
+    subsidyRejectedReason:r.subsidy_rejected_reason||''
   };
 }
 
@@ -3083,6 +3091,14 @@ function renderSubsidyCheck(){
     // 반려건: 미완료 차수는 체크 불가
     const checkBlocked=isRejected&&!row.done;
 
+    // 반려건은 별도 배경색
+    const rowBg = isRejected&&!row.done
+      ? 'background:rgba(239,68,68,.06)'
+      : isHighlight ? 'background:rgba(239,68,68,.05)'
+      : row.done ? 'background:rgba(16,185,129,.04)' : '';
+    const rowOpacity = row.done ? 'opacity:.7' : '';
+    const rowStyleFinal = `${rowBg};${rowOpacity}`;
+
     const ordinalBg=row.done?'var(--green-dim)':st.key==='delayed'?'var(--red-dim)':st.key==='today'?'var(--orange-dim)':st.key==='imminent'?'var(--amber-dim)':'var(--brand-dim)';
     const ordinalColor=row.done?'var(--green-text)':st.key==='delayed'?'var(--red-text)':st.key==='today'?'var(--orange-text)':st.key==='imminent'?'var(--amber-text)':'var(--brand-text)';
     const doneDateHtml=row.done&&row.doneDate
@@ -3091,7 +3107,7 @@ function renderSubsidyCheck(){
 
     const detailBtn=`<button class="btn-detail" data-panel="${r.id}" onclick="toggleSubsidyPanel('${r.id}')" title="전체 대납 일정 보기">📋 자세히</button>`;
 
-    const dataRow=`<tr data-rid="${r.id}" style="${rowStyle}">
+    const dataRow=`<tr data-rid="${r.id}" style="${rowStyleFinal}">
       <td class="fw" style="white-space:nowrap">${esc(r.agent)}</td>
       <td style="font-size:11px;color:var(--ink-3)">${esc(r.subNo||'—')}</td>
       <td style="white-space:nowrap">${esc(r.customer)}</td>
@@ -3108,15 +3124,18 @@ function renderSubsidyCheck(){
       <td style="font-size:11px;white-space:nowrap;color:${st.key==='delayed'?'var(--red)':'var(--ink-2)'};font-weight:${st.key==='delayed'?'700':'400'}">
         ${row.deadline}${st.key==='delayed'?' ⚠️':''}
       </td>
-      <td class="ctr"><span class="status-chip ${st.cls}">${st.label}</span>${isRejected&&!row.done?`<br><span class="reject-badge" style="margin-top:3px">⛔반려</span>`:''}
+      <td class="ctr">
+        <span class="status-chip ${st.cls}">${st.label}</span>
+        ${isRejected&&!row.done?`<div><span class="reject-badge" style="margin-top:3px">⛔ 대납반려</span></div>`:''}
       </td>
       <td class="ctr">
         <button class="btn-check ${row.done?'done':''} ${checkBlocked?'reject-disabled':''}"
           onclick="${checkBlocked?'return false':`toggleScheduleRow('${r.id}',${i})`}"
-          title="${checkBlocked?'반려 처리된 건 — 완료 체크 불가':row.done?'완료 취소':'완료 처리'}"
+          title="${checkBlocked?`반려: ${r.subsidyRejectedReason||'사유 없음'}`:row.done?'완료 취소':'완료 처리'}"
           style="white-space:nowrap">
-          ${checkBlocked?'🚫 차단됨':row.done?'✅ 완료':'☐ 완료'}
+          ${checkBlocked?'🚫 완료불가':row.done?'✅ 완료':'☐ 완료'}
         </button>
+        ${checkBlocked&&r.subsidyRejectedReason?`<div style="font-size:10px;color:var(--red-text);margin-top:3px;max-width:90px;word-break:break-all">${esc(r.subsidyRejectedReason)}</div>`:''}
       </td>
       <td class="ctr">${doneDateHtml}</td>
       <td><input type="text" class="fi" style="min-width:90px;padding:5px 8px;font-size:11px" value="${esc(r.subsidyCheckMemo||'')}" placeholder="메모" onchange="updateSubsidyMemo('${r.id}',this.value)"/></td>
